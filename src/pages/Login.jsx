@@ -6,14 +6,19 @@ const Login = () => {
         <div style={{ paddingTop: '100px', minHeight: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <div className="login-container" style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-light)', width: '100%', maxWidth: '400px' }}>
                 <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>Welcome Back</h2>
-                <form id="loginForm" onSubmit={(e) => { e.preventDefault(); window.location.href = '/dashboard-client'; }}>
+                <form id="loginForm" onSubmit={(e) => { e.preventDefault(); window.location.href = '/dashboard-admin'; }}>
+                    <div style={{ padding: '1rem', marginBottom: '1.5rem', backgroundColor: 'rgba(var(--accent-rgb), 0.1)', border: '1px solid var(--accent)', borderRadius: '8px', fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                        <strong>Test Credentials:</strong><br/>
+                        Email: test@admin.com<br/>
+                        Password: password123
+                    </div>
                     <div className="form-group">
                         <label htmlFor="email">Email</label>
-                        <input type="email" id="email" placeholder="Enter your email" required />
+                        <input type="email" id="email" placeholder="Enter your email" defaultValue="test@admin.com" required />
                     </div>
                     <div className="form-group">
                         <label htmlFor="password">Password</label>
-                        <input type="password" id="password" placeholder="Enter your password" required />
+                        <input type="password" id="password" placeholder="Enter your password" defaultValue="password123" required />
                     </div>
                     <div className="form-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>

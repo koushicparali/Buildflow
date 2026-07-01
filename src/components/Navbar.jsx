@@ -36,16 +36,7 @@ const Navbar = () => {
                 <li><Link to="/faq" onClick={closeMenu}>FAQ</Link></li>
                 <li><Link to="/contact" onClick={closeMenu}>Contact</Link></li>
                 
-                {/* Simulated Auth Links for Demo */}
-                <li className="dropdown">
-                    <span style={{ cursor: 'pointer', color: 'var(--text-main)', fontWeight: '600' }}>Dashboards ▾</span>
-                    <ul className="dropdown-menu">
-                        <li><Link to="/dashboard-admin" onClick={closeMenu}>Admin</Link></li>
-                        <li><Link to="/dashboard-pm" onClick={closeMenu}>Proj Manager</Link></li>
-                        <li><Link to="/dashboard-engineer" onClick={closeMenu}>Engineer</Link></li>
-                        <li><Link to="/dashboard-contractor" onClick={closeMenu}>Contractor</Link></li>
-                    </ul>
-                </li>
+
             </ul>
             <div className="nav-actions">
                 <button className="theme-toggle" aria-label="Toggle Theme" onClick={toggleTheme}>
