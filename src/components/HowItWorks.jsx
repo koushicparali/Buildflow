@@ -9,19 +9,19 @@ const HowItWorks = () => {
             </div>
             <div className="steps-container">
                 <div className="step-card reveal fade-left">
-                    <div className="step-number">1</div>
-                    <h3>Assign Tasks</h3>
-                    <p>Create and assign tasks to your workforce effortlessly from the dashboard.</p>
+                    <div className="step-number" style={{ background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)', color: '#0b0f19', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 800, margin: '0 auto 1.8rem', boxShadow: '0 8px 20px -6px var(--accent)' }}>1</div>
+                    <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.8rem' }}>Assign Tasks</h3>
+                    <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>Create and assign tasks to your workforce effortlessly from the dashboard.</p>
                 </div>
                 <div className="step-card reveal fade-up">
-                    <div className="step-number">2</div>
-                    <h3>Monitor Progress</h3>
-                    <p>Track real-time updates as your staff completes their assigned duties.</p>
+                    <div className="step-number" style={{ background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)', color: '#0b0f19', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 800, margin: '0 auto 1.8rem', boxShadow: '0 8px 20px -6px var(--accent)' }}>2</div>
+                    <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.8rem' }}>Monitor Progress</h3>
+                    <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>Track real-time updates as your staff completes their assigned duties.</p>
                 </div>
                 <div className="step-card reveal fade-right">
-                    <div className="step-number">3</div>
-                    <h3>Review & Report</h3>
-                    <p>Generate reports and analyze performance to improve future operations.</p>
+                    <div className="step-number" style={{ background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)', color: '#0b0f19', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 800, margin: '0 auto 1.8rem', boxShadow: '0 8px 20px -6px var(--accent)' }}>3</div>
+                    <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.8rem' }}>Review & Report</h3>
+                    <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>Generate reports and analyze performance to improve future operations.</p>
                 </div>
             </div>
         </section>

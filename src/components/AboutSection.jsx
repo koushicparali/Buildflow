@@ -10,7 +10,7 @@ const AboutSection = () => {
                     <p>Founded by industry veterans, we bridge the gap between the field and the office, ensuring that every task is tracked, communication is seamless, and projects are delivered on time and within budget.</p>
                 </div>
                 <div className="about-image reveal fade-right">
-                    <img src="/assets/slide2.png" alt="Construction Site Team" />
+                    <img src="/assets/slide2.webp" alt="Construction Site Team" />
                 </div>
             </div>
         </section>

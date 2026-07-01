@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const slideData = [
-    { title: "Empower Your Staff & Track Progress", text: "Assign tasks, monitor real-time progress, and streamline communication across the entire site.", bg: "/assets/slide1.png" },
-    { title: "Real-Time Site Analytics", text: "Get actionable insights and live updates directly from your construction sites to stay ahead of schedule.", bg: "/assets/slide2.png" },
-    { title: "Seamless Team Collaboration", text: "Connect everyone from the field workers to the back office in one unified, easy-to-use platform.", bg: "/assets/slide3.png" },
-    { title: "Boost Project Efficiency", text: "Save hours of administrative work, reduce delays, and focus on building faster and better.", bg: "/assets/slide4.png" }
+    { title: "Empower Your Staff & Track Progress", text: "Assign tasks, monitor real-time progress, and streamline communication across the entire site.", bg: "/assets/slide1.webp" },
+    { title: "Real-Time Site Analytics", text: "Get actionable insights and live updates directly from your construction sites to stay ahead of schedule.", bg: "/assets/slide2.webp" },
+    { title: "Seamless Team Collaboration", text: "Connect everyone from the field workers to the back office in one unified, easy-to-use platform.", bg: "/assets/slide3.webp" },
+    { title: "Boost Project Efficiency", text: "Save hours of administrative work, reduce delays, and focus on building faster and better.", bg: "/assets/slide4.webp" }
 ];
 
 const Hero = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isFading, setIsFading] = useState(false);
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const { login } = useAuth();
+    const navigate = useNavigate();
     
     // Manage slider timer
     useEffect(() => {
@@ -40,8 +46,16 @@ const Hero = () => {
             </div>
             
             <div className="slider-controls">
-                <button className="slider-btn prev" onClick={() => handleSlideChange((currentSlide - 1 + slideData.length) % slideData.length)}>&#10094;</button>
-                <button className="slider-btn next" onClick={() => handleSlideChange((currentSlide + 1) % slideData.length)}>&#10095;</button>
+                <button className="slider-btn prev" onClick={() => handleSlideChange((currentSlide - 1 + slideData.length) % slideData.length)} aria-label="Previous Slide">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                </button>
+                <button className="slider-btn next" onClick={() => handleSlideChange((currentSlide + 1) % slideData.length)} aria-label="Next Slide">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                </button>
             </div>
             <div className="slider-indicators">
                 {slideData.map((_, index) => (
@@ -55,23 +69,34 @@ const Hero = () => {
 
             <div className="hero-container">
                 <div className="hero-content" style={{ opacity: isFading ? 0 : 1, transition: 'opacity 0.3s ease' }}>
-                    <h1>{slideData[currentSlide].title}</h1>
-                    <p>{slideData[currentSlide].text}</p>
+                    <h1 style={{ letterSpacing: '-0.03em' }}>{slideData[currentSlide].title}</h1>
+                    <p style={{ fontSize: '1.2rem', lineHeight: '1.6' }}>{slideData[currentSlide].text}</p>
                     <button className="btn accent-btn modal-trigger" onClick={() => window.dispatchEvent(new CustomEvent('openQuoteModal'))}>Get Started</button>
                 </div>
                 
-                <div className="hero-login-card">
-                    <h2>Welcome Back</h2>
-                    <form id="heroLoginForm" onSubmit={(e) => e.preventDefault()}>
+                <div className="hero-login-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-light)', boxShadow: 'var(--card-shadow)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+                    <h2 style={{ letterSpacing: '-0.025em', marginBottom: '2rem' }}>Welcome Back</h2>
+                    <form id="heroLoginForm" onSubmit={async (e) => { 
+                        e.preventDefault(); 
+                        const userRole = await login(username, password);
+                        if (userRole) {
+                            navigate(`/dashboard-${userRole}`);
+                        } else {
+                            alert('No user found! Please create an account.');
+                        }
+                    }}>
                         <div className="form-group">
-                            <label htmlFor="login-email">Email</label>
-                            <input type="email" id="login-email" placeholder="Enter your email" required />
+                            <label htmlFor="login-username">Username</label>
+                            <input type="text" id="login-username" placeholder="Enter your username" value={username} onChange={(e) => setUsername(e.target.value)} required style={{ border: '1px solid var(--border-light)' }} />
                         </div>
                         <div className="form-group">
                             <label htmlFor="login-password">Password</label>
-                            <input type="password" id="login-password" placeholder="Enter your password" required />
+                            <input type="password" id="login-password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ border: '1px solid var(--border-light)' }} />
                         </div>
-                        <button type="submit" className="btn submit-btn">Sign In</button>
+                        <button type="submit" className="btn submit-btn" style={{ width: '100%', marginBottom: '1.5rem', fontWeight: '700' }}>Sign In</button>
+                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                            Don't have an account? <Link to="/signup" style={{ color: 'var(--accent)', fontWeight: '600' }}>Sign up</Link>
+                        </p>
                     </form>
                 </div>
             </div>

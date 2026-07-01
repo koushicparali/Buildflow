@@ -1,21 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import QuoteModal from './components/QuoteModal';
+import LoadingSpinner from './components/LoadingSpinner';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
-import Features from './pages/Features';
-import About from './pages/About';
-import FAQ from './pages/FAQ';
-import Contact from './pages/Contact';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import DashboardAdmin from './pages/DashboardAdmin';
-import DashboardProjectManager from './pages/DashboardProjectManager';
-import DashboardEngineer from './pages/DashboardEngineer';
-import DashboardContractor from './pages/DashboardContractor';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
+
+const Features = lazy(() => import('./pages/Features'));
+const About = lazy(() => import('./pages/About'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Signup = lazy(() => import('./pages/Signup'));
+const DashboardAdmin = lazy(() => import('./pages/DashboardAdmin'));
+const DashboardProjectManager = lazy(() => import('./pages/DashboardProjectManager'));
+const DashboardEngineer = lazy(() => import('./pages/DashboardEngineer'));
+const DashboardContractor = lazy(() => import('./pages/DashboardContractor'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
 import './index.css';
 
 const ScrollToTopAndReveal = () => {
@@ -59,28 +62,47 @@ function App() {
 
   return (
     <Router>
-      <ScrollToTopAndReveal />
-      <div className="ambient-glow"></div>
-      <Navbar />
-      
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/features" element={<Features />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard-admin" element={<DashboardAdmin />} />
-        <Route path="/dashboard-pm" element={<DashboardProjectManager />} />
-        <Route path="/dashboard-engineer" element={<DashboardEngineer />} />
-        <Route path="/dashboard-contractor" element={<DashboardContractor />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-      </Routes>
+      <AuthProvider>
+        <ScrollToTopAndReveal />
+        <div className="ambient-glow"></div>
+        <Navbar />
+        
+        <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/dashboard-admin" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <DashboardAdmin />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard-pm" element={
+            <ProtectedRoute allowedRoles={['pm', 'admin']}>
+              <DashboardProjectManager />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard-engineer" element={
+            <ProtectedRoute allowedRoles={['engineer', 'admin']}>
+              <DashboardEngineer />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard-contractor" element={
+            <ProtectedRoute allowedRoles={['contractor', 'admin']}>
+              <DashboardContractor />
+            </ProtectedRoute>
+          } />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+        </Routes>
+      </Suspense>
 
       <QuoteModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       <Footer />
+      </AuthProvider>
     </Router>
   );
 }
