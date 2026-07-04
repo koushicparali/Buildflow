@@ -71,14 +71,26 @@ def upcoming_deadlines(request):
     today = datetime.date.today()
     future = today + datetime.timedelta(days=30)
     
-    # Deadlines for Tasks
-    tasks = Task.objects.filter(deadline__range=[today, future]).exclude(status='Completed')
+    user = request.user
     
-    # Filter based on role if necessary, for now we return all for simplicity or we can filter
+    # Base querysets
+    tasks = Task.objects.filter(deadline__range=[today, future]).exclude(status='Completed')
+    projects = Project.objects.filter(deadline__range=[today, future]).exclude(status='Completed')
+    
+    # Filter based on role
+    if user.is_superuser or user.role == 'admin':
+        pass # see all
+    elif user.role == 'pm':
+        tasks = tasks.filter(project__created_by=user)
+        projects = projects.filter(created_by=user)
+    elif user.role == 'engineer':
+        tasks = tasks.filter(assigned_engineer=user)
+        projects = Project.objects.none() # Engineers don't directly own projects in this context
+    elif user.role == 'contractor':
+        tasks = tasks.filter(assigned_contractor=user)
+        projects = projects.filter(assigned_contractors=user)
     
     task_data = TaskSerializer(tasks, many=True).data
-    
-    projects = Project.objects.filter(deadline__range=[today, future]).exclude(status='Completed')
     project_data = ProjectSerializer(projects, many=True).data
     
     return Response({

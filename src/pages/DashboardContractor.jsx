@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../utils/api';
 import { useLocation, Link } from 'react-router-dom';
-import { recentActivities, upcomingDeadlines, notifications } from '../data/mockAdminData';
 import { CheckCircle, ListTodo, Activity, FileUp, Building, HardHat } from 'lucide-react';
 
 const DashboardContractor = () => {
@@ -11,6 +10,7 @@ const DashboardContractor = () => {
     
     const [tasksList, setTasksList] = useState([]);
     const [projectsList, setProjectsList] = useState([]);
+    const [upcomingDeadlinesList, setUpcomingDeadlinesList] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
     
     // Modals
@@ -26,6 +26,7 @@ const DashboardContractor = () => {
         try {
             const allTasks = await apiFetch('/tasks/');
             const allProjects = await apiFetch('/projects/');
+            const deadlinesRes = await apiFetch('/upcoming-deadlines/');
             
             if (allTasks && !allTasks.error) {
                 const myTasks = allTasks.filter(t => t.assigned_contractor === user?.user_id);
@@ -35,6 +36,9 @@ const DashboardContractor = () => {
                 const myProjectIds = [...new Set(allTasks.filter(t => t.assigned_contractor === user?.user_id).map(t => t.project))];
                 const myProjects = allProjects.filter(p => myProjectIds.includes(p.id));
                 setProjectsList(myProjects);
+            }
+            if (deadlinesRes && !deadlinesRes.error) {
+                setUpcomingDeadlinesList(deadlinesRes.tasks || []);
             }
         } catch (e) {
             console.error("Error fetching contractor data:", e);
@@ -138,15 +142,24 @@ const DashboardContractor = () => {
                 <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
                     <h3 style={{ marginBottom: '1rem', color: 'var(--text-main)', fontSize: '1.2rem' }}>Upcoming Deadlines</h3>
                     <div className="deadline-list">
-                        {upcomingDeadlines.map((dl) => (
+                        {upcomingDeadlinesList.length === 0 ? (
+                            <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>No upcoming deadlines.</div>
+                        ) : upcomingDeadlinesList.map((dl) => {
+                            const today = new Date();
+                            const dlDate = new Date(dl.deadline);
+                            const diffTime = dlDate - today;
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const remainingText = diffDays > 0 ? `Due in ${diffDays} days` : diffDays === 0 ? 'Due today' : `Overdue by ${Math.abs(diffDays)} days`;
+
+                            return (
                             <div key={dl.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
                                 <div>
-                                    <div style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{dl.taskName}</div>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Due in {dl.remainingDays} days</div>
+                                    <div style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{dl.title}</div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{remainingText}</div>
                                 </div>
                                 <span className={`status-pill ${dl.priority === 'Critical' ? 'error' : dl.priority === 'High' ? 'warning' : 'active'}`}>{dl.priority}</span>
                             </div>
-                        ))}
+                        )})}
                     </div>
                 </div>
             </div>

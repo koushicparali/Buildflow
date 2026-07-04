@@ -17,6 +17,7 @@ const DashboardProjectManager = () => {
     const [tasksList, setTasksList] = useState([]);
     const [usersList, setUsersList] = useState([]);
     const [notificationsList, setNotificationsList] = useState([]);
+    const [upcomingDeadlinesList, setUpcomingDeadlinesList] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Modals state
@@ -28,17 +29,19 @@ const DashboardProjectManager = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [usersRes, projectsRes, tasksRes, notificationsRes] = await Promise.all([
+            const [usersRes, projectsRes, tasksRes, notificationsRes, deadlinesRes] = await Promise.all([
                 apiFetch('/users/'),
                 apiFetch('/projects/'),
                 apiFetch('/tasks/'),
-                apiFetch('/notifications/')
+                apiFetch('/notifications/'),
+                apiFetch('/upcoming-deadlines/')
             ]);
 
             if (usersRes && !usersRes.error) setUsersList(usersRes);
             if (projectsRes && !projectsRes.error) setProjectsList(projectsRes);
             if (tasksRes && !tasksRes.error) setTasksList(tasksRes);
             if (notificationsRes && !notificationsRes.error) setNotificationsList(notificationsRes);
+            if (deadlinesRes && !deadlinesRes.error) setUpcomingDeadlinesList(deadlinesRes.tasks || []);
         } catch (e) {
             console.error("Error fetching data:", e);
         }
@@ -229,20 +232,28 @@ const DashboardProjectManager = () => {
             <div>
                 <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--text-main)' }}>Upcoming Deadlines</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-                    {tasksList.filter(t => t.status !== 'Completed').slice(0, 4).map(t => (
-                        <div key={t.id} style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+                    {upcomingDeadlinesList.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No upcoming deadlines in the next 30 days.</p> :
+                     upcomingDeadlinesList.slice(0, 4).map(dl => {
+                        const today = new Date();
+                        const dlDate = new Date(dl.deadline);
+                        const diffTime = dlDate - today;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        const remainingText = diffDays > 0 ? `Due in ${diffDays} days` : diffDays === 0 ? 'Due today' : `Overdue by ${Math.abs(diffDays)} days`;
+
+                        return (
+                        <div key={dl.id} style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                                <h4 style={{ color: 'var(--text-main)', fontSize: '1rem' }}>{t.title}</h4>
-                                <span className="status-pill error">Urgent</span>
+                                <h4 style={{ color: 'var(--text-main)', fontSize: '1rem' }}>{dl.title}</h4>
+                                <span className={`status-pill ${dl.priority === 'Critical' ? 'error' : dl.priority === 'High' ? 'warning' : 'active'}`}>{dl.priority || 'Medium'}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                                <UserPlus size={14} /> {usersList.find(u => u.id === t.assigned_engineer)?.username || 'Unassigned'}
+                                <UserPlus size={14} /> {usersList.find(u => u.id === dl.assigned_engineer)?.username || 'Unassigned'}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                <Clock size={14} /> {t.deadline || 'No Deadline'}
+                                <Clock size={14} /> {remainingText}
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </div>
             </div>
         </div>

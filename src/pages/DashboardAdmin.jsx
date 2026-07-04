@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../utils/api';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useLocation } from 'react-router-dom';
-import { FolderKanban, CheckCircle, Users, ListTodo, Plus, Filter, Edit, Trash2, MapPin, DollarSign, Calendar, Check } from 'lucide-react';
+import { FolderKanban, CheckCircle, Users, ListTodo, Plus, Filter, Edit, Trash2, MapPin, DollarSign, Calendar, Check, Bell } from 'lucide-react';
 
 const DashboardAdmin = () => {
     const { user } = useAuth();
@@ -12,6 +12,8 @@ const DashboardAdmin = () => {
     const [projectsList, setProjectsList] = useState([]);
     const [tasksList, setTasksList] = useState([]);
     const [queriesList, setQueriesList] = useState([]);
+    const [notificationsList, setNotificationsList] = useState([]);
+    const [upcomingDeadlinesList, setUpcomingDeadlinesList] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [adminPassword, setAdminPassword] = useState('');
@@ -25,14 +27,21 @@ const DashboardAdmin = () => {
     const fetchData = async () => {
         setLoadingData(true);
         try {
-            const users = await apiFetch('/users/');
-            const projects = await apiFetch('/projects/');
-            const tasks = await apiFetch('/tasks/');
-            const queries = await apiFetch('/queries/');
-            if (users && !users.error) setUsersList(users);
-            if (projects && !projects.error) setProjectsList(projects);
-            if (tasks && !tasks.error) setTasksList(tasks);
-            if (queries && !queries.error) setQueriesList(queries);
+            const [usersRes, projectsRes, tasksRes, queriesRes, notificationsRes, deadlinesRes] = await Promise.all([
+                apiFetch('/users/'),
+                apiFetch('/projects/'),
+                apiFetch('/tasks/'),
+                apiFetch('/contact-queries/'),
+                apiFetch('/notifications/'),
+                apiFetch('/upcoming-deadlines/')
+            ]);
+            
+            if(usersRes && !usersRes.error) setUsersList(usersRes);
+            if(projectsRes && !projectsRes.error) setProjectsList(projectsRes);
+            if(tasksRes && !tasksRes.error) setTasksList(tasksRes);
+            if(queriesRes && !queriesRes.error) setQueriesList(queriesRes);
+            if(notificationsRes && !notificationsRes.error) setNotificationsList(notificationsRes);
+            if(deadlinesRes && !deadlinesRes.error) setUpcomingDeadlinesList(deadlinesRes.tasks || []);
         } catch (e) {
             console.error("Error fetching data:", e);
         }
@@ -63,8 +72,8 @@ const DashboardAdmin = () => {
 
     if (!isUnlocked) {
         return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
-                <div style={{ background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '16px', border: '1px solid var(--border-light)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)' }}>
+                <div style={{ background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '16px', border: '1px solid var(--border-light)', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: 'var(--card-shadow)' }}>
                     <h2 style={{ color: 'var(--text-main)', marginBottom: '1.5rem' }}>Admin Access</h2>
                     {loginError && <div style={{ color: 'var(--error)', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px' }}>{loginError}</div>}
                     <form onSubmit={handleUnlock}>
@@ -166,14 +175,15 @@ const DashboardAdmin = () => {
         return Math.round(pTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / pTasks.length);
     };
 
-    // Dynamic Alerts
-    const dynamicNotifications = projectsList.slice(-3).reverse().map((p, idx) => ({
-        id: p.id || idx,
-        title: `Project Update: ${p.title}`,
-        description: `Status changed to ${p.status}`
+    // Dynamic Alerts from real API
+    let displayNotifications = notificationsList.slice(0, 3).map((n) => ({
+        id: n.id,
+        title: n.type,
+        description: n.message
     }));
-    if (dynamicNotifications.length === 0) {
-        dynamicNotifications.push({ id: 0, title: "No recent activity", description: "Create a project to see updates here." });
+    
+    if (displayNotifications.length === 0) {
+        displayNotifications.push({ id: 0, title: "No recent alerts", description: "All systems running smoothly." });
     }
 
     const renderOverview = () => (
@@ -319,7 +329,7 @@ const DashboardAdmin = () => {
                     <div>
                         <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '1rem' }}>Alerts</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {dynamicNotifications.map(notif => (
+                            {displayNotifications.map(notif => (
                                 <div key={notif.id} style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
                                     <h4 style={{ color: 'var(--text-main)', fontSize: '1rem', marginBottom: '0.2rem' }}>{notif.title}</h4>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{notif.description}</p>

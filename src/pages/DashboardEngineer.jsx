@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../utils/api';
 import { useLocation, Link } from 'react-router-dom';
-import { recentActivities, upcomingDeadlines, notifications } from '../data/mockAdminData';
 import { CheckCircle, ListTodo, Activity, FileUp, Clock } from 'lucide-react';
 
 const DashboardEngineer = () => {
@@ -10,6 +9,7 @@ const DashboardEngineer = () => {
     const location = useLocation();
     
     const [tasksList, setTasksList] = useState([]);
+    const [upcomingDeadlinesList, setUpcomingDeadlinesList] = useState([]);
 
     const [loadingData, setLoadingData] = useState(true);
     
@@ -27,11 +27,15 @@ const DashboardEngineer = () => {
         setLoadingData(true);
         try {
             const allTasks = await apiFetch('/tasks/');
+            const deadlinesRes = await apiFetch('/upcoming-deadlines/');
             
             // In a real app, backend should filter. Here we filter locally for safety.
             if (allTasks && !allTasks.error) {
                 const myTasks = allTasks.filter(t => t.assigned_engineer === user?.user_id);
                 setTasksList(myTasks);
+            }
+            if (deadlinesRes && !deadlinesRes.error) {
+                setUpcomingDeadlinesList(deadlinesRes.tasks || []);
             }
 
         } catch (e) {
@@ -150,15 +154,24 @@ const DashboardEngineer = () => {
                 <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
                     <h3 style={{ marginBottom: '1rem', color: 'var(--text-main)', fontSize: '1.2rem' }}>Upcoming Deadlines</h3>
                     <div className="deadline-list">
-                        {upcomingDeadlines.map((dl) => (
+                        {upcomingDeadlinesList.length === 0 ? (
+                            <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>No upcoming deadlines.</div>
+                        ) : upcomingDeadlinesList.map((dl) => {
+                            const today = new Date();
+                            const dlDate = new Date(dl.deadline);
+                            const diffTime = dlDate - today;
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const remainingText = diffDays > 0 ? `Due in ${diffDays} days` : diffDays === 0 ? 'Due today' : `Overdue by ${Math.abs(diffDays)} days`;
+
+                            return (
                             <div key={dl.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
                                 <div>
-                                    <div style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{dl.taskName}</div>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Due in {dl.remainingDays} days</div>
+                                    <div style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{dl.title}</div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{remainingText}</div>
                                 </div>
                                 <span className={`status-pill ${dl.priority === 'Critical' ? 'error' : dl.priority === 'High' ? 'warning' : 'active'}`}>{dl.priority}</span>
                             </div>
-                        ))}
+                        )})}
                     </div>
                 </div>
             </div>

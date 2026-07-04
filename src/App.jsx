@@ -1,5 +1,6 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { MessageCircle } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import QuoteModal from './components/QuoteModal';
@@ -51,6 +52,15 @@ const ScrollToTopAndReveal = () => {
   return null;
 };
 
+const FloatingAction = () => {
+  return (
+    <button className="floating-action-btn" onClick={() => window.dispatchEvent(new Event('openQuoteModal'))}>
+      <MessageCircle size={26} />
+      <span className="floating-action-tooltip">Get a Quote</span>
+    </button>
+  );
+};
+
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -64,7 +74,13 @@ function App() {
     <Router>
       <AuthProvider>
         <ScrollToTopAndReveal />
-        <div className="ambient-glow"></div>
+        <div className="ambient-orbs">
+          <div className="orb orb-1"></div>
+          <div className="orb orb-2"></div>
+          <div className="orb orb-3"></div>
+        </div>
+        <div className="bg-grid"></div>
+        <FloatingAction />
         <Navbar />
         
         <Suspense fallback={<LoadingSpinner />}>
