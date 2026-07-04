@@ -98,3 +98,17 @@ class ContactQuery(models.Model):
 
     def __str__(self):
         return f"Query from {self.name} - {'Read' if self.is_read else 'Unread'}"
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    message = models.TextField()
+    type = models.CharField(max_length=50, choices=[('Deadline', 'Deadline'), ('Escalation', 'Escalation'), ('Info', 'Info')], default='Info')
+    escalation_level = models.IntegerField(default=0)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Optional relation to a task
+    related_task = models.ForeignKey(Task, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
+
+    def __str__(self):
+        return f"[{self.type}] To {self.user.username}: {self.message}"

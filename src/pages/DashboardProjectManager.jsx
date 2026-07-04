@@ -4,8 +4,8 @@ import { apiFetch } from '../utils/api';
 import { useLocation } from 'react-router-dom';
 import {
     FolderKanban, Activity, CheckCircle, ListTodo, ClipboardList,
-    TrendingUp, MapPin, Calendar, DollarSign, Clock, Search, Plus,
-    UserPlus, Edit2, Trash2, FileText, Download, Eye, CheckCircle2
+    TrendingUp, MapPin, Calendar, DollarSign, Clock, Plus,
+    UserPlus, Edit2, Trash2, FileText, Download, Eye, CheckCircle2, Bell
 } from 'lucide-react';
 
 const DashboardProjectManager = () => {
@@ -16,6 +16,7 @@ const DashboardProjectManager = () => {
     const [projectsList, setProjectsList] = useState([]);
     const [tasksList, setTasksList] = useState([]);
     const [usersList, setUsersList] = useState([]);
+    const [notificationsList, setNotificationsList] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Modals state
@@ -27,15 +28,17 @@ const DashboardProjectManager = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [usersRes, projectsRes, tasksRes] = await Promise.all([
+            const [usersRes, projectsRes, tasksRes, notificationsRes] = await Promise.all([
                 apiFetch('/users/'),
                 apiFetch('/projects/'),
-                apiFetch('/tasks/')
+                apiFetch('/tasks/'),
+                apiFetch('/notifications/')
             ]);
 
             if (usersRes && !usersRes.error) setUsersList(usersRes);
             if (projectsRes && !projectsRes.error) setProjectsList(projectsRes);
             if (tasksRes && !tasksRes.error) setTasksList(tasksRes);
+            if (notificationsRes && !notificationsRes.error) setNotificationsList(notificationsRes);
         } catch (e) {
             console.error("Error fetching data:", e);
         }
@@ -392,6 +395,52 @@ const DashboardProjectManager = () => {
         </div>
     );
 
+    const renderAlerts = () => (
+        <div className="tab-pane reveal active fade-up">
+            <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', marginBottom: '2rem' }}>Alerts & Notifications</h2>
+            
+            {notificationsList.length === 0 ? (
+                <div style={{ background: 'var(--bg-card)', padding: '3rem', borderRadius: '16px', textAlign: 'center', border: '1px dashed var(--border-light)' }}>
+                    <Bell size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
+                    <h3 style={{ color: 'var(--text-main)', fontSize: '1.2rem', marginBottom: '0.5rem' }}>No new alerts</h3>
+                    <p style={{ color: 'var(--text-muted)' }}>You're all caught up!</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {notificationsList.map(notif => (
+                        <div key={notif.id} style={{ 
+                            background: 'var(--bg-card)', 
+                            padding: '1.5rem', 
+                            borderRadius: '16px', 
+                            border: `1px solid ${notif.escalation_level > 1 ? 'var(--error)' : 'var(--border-light)'}`,
+                            display: 'flex', 
+                            gap: '1.5rem', 
+                            alignItems: 'center' 
+                        }}>
+                            <div style={{ 
+                                background: notif.escalation_level > 1 ? 'rgba(255, 71, 87, 0.1)' : 'var(--accent-glow)', 
+                                color: notif.escalation_level > 1 ? 'var(--error)' : 'var(--accent)', 
+                                padding: '1rem', 
+                                borderRadius: '50%' 
+                            }}>
+                                <Bell size={24} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <h3 style={{ color: 'var(--text-main)', fontSize: '1.1rem', marginBottom: '0.3rem' }}>
+                                    {notif.type} {notif.escalation_level > 0 && `(Escalation Level ${notif.escalation_level})`}
+                                </h3>
+                                <p style={{ color: 'var(--text-muted)' }}>{notif.message}</p>
+                            </div>
+                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', textAlign: 'right' }}>
+                                {new Date(notif.created_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
     if (loading) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-dark)' }}><div className="loader"></div></div>;
     }
@@ -403,6 +452,7 @@ const DashboardProjectManager = () => {
             {currentTab === '#projects' && renderProjects()}
             {currentTab === '#tasks' && renderTasks()}
             {currentTab === '#reports' && renderReports()}
+            {currentTab === '#alerts' && renderAlerts()}
 
             {/* PROJECT MODAL */}
             {showProjectModal && (

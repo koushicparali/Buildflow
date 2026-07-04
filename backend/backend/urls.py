@@ -19,8 +19,11 @@ from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from api.views import CustomTokenObtainPairView, public_stats
 
+from django.views.generic import RedirectView
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('', RedirectView.as_view(url='/secret-admin/', permanent=False)),
+    path('secret-admin/', admin.site.urls),
     path('api/', include('api.urls')),
     
     # JWT Authentication Endpoints

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../utils/api';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useLocation } from 'react-router-dom';
-import { FolderKanban, CheckCircle, Users, ListTodo, Search, Plus, Filter, Edit, Trash2, MapPin, DollarSign, Calendar, Check } from 'lucide-react';
+import { FolderKanban, CheckCircle, Users, ListTodo, Plus, Filter, Edit, Trash2, MapPin, DollarSign, Calendar, Check } from 'lucide-react';
 
 const DashboardAdmin = () => {
     const { user } = useAuth();
@@ -12,7 +12,15 @@ const DashboardAdmin = () => {
     const [projectsList, setProjectsList] = useState([]);
     const [tasksList, setTasksList] = useState([]);
     const [queriesList, setQueriesList] = useState([]);
-    const [loadingData, setLoadingData] = useState(true);
+    const [loadingData, setLoadingData] = useState(false);
+    const [isUnlocked, setIsUnlocked] = useState(false);
+    const [adminPassword, setAdminPassword] = useState('');
+    const [loginError, setLoginError] = useState('');
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [editUser, setEditUser] = useState(null);
+    const [showProjectModal, setShowProjectModal] = useState(false);
+    const [editProject, setEditProject] = useState(null);
+    const { login } = useAuth(); // assuming login is available from useAuth
 
     const fetchData = async () => {
         setLoadingData(true);
@@ -32,8 +40,51 @@ const DashboardAdmin = () => {
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (isUnlocked) {
+            fetchData();
+        }
+    }, [isUnlocked]);
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [location.hash]);
+
+    const handleUnlock = async (e) => {
+        e.preventDefault();
+        setLoginError('');
+        // Attempt login as admin1 with the provided password
+        const role = await login('admin1', adminPassword);
+        if (role === 'admin') {
+            setIsUnlocked(true);
+        } else {
+            setLoginError('Incorrect password or admin account not configured.');
+        }
+    };
+
+    if (!isUnlocked) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
+                <div style={{ background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '16px', border: '1px solid var(--border-light)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+                    <h2 style={{ color: 'var(--text-main)', marginBottom: '1.5rem' }}>Admin Access</h2>
+                    {loginError && <div style={{ color: 'var(--error)', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px' }}>{loginError}</div>}
+                    <form onSubmit={handleUnlock}>
+                        <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
+                            <label style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Password</label>
+                            <input 
+                                type="password" 
+                                value={adminPassword} 
+                                onChange={(e) => setAdminPassword(e.target.value)} 
+                                placeholder="Enter admin password..."
+                                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-main)', color: 'var(--text-main)' }}
+                                required
+                            />
+                        </div>
+                        <button type="submit" className="btn primary-btn" style={{ width: '100%' }}>Unlock Dashboard</button>
+                    </form>
+                </div>
+            </div>
+        );
+    }
 
     // Handlers
     const handleDeleteUser = async (id) => {
@@ -50,11 +101,6 @@ const DashboardAdmin = () => {
         }
     };
 
-    const [showUserModal, setShowUserModal] = useState(false);
-    const [editUser, setEditUser] = useState(null);
-    const [showProjectModal, setShowProjectModal] = useState(false);
-    const [editProject, setEditProject] = useState(null);
-
     const openUserModal = (usr = null) => {
         setEditUser(usr);
         setShowUserModal(true);
@@ -64,12 +110,6 @@ const DashboardAdmin = () => {
         setEditProject(proj);
         setShowProjectModal(true);
     };
-
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, [location.hash]);
-
-
 
     const currentTab = location.hash || '#overview';
 
@@ -302,13 +342,7 @@ const DashboardAdmin = () => {
                 <button onClick={() => openProjectModal()} className="btn primary-btn" style={{ gap: '0.5rem' }}><Plus size={18}/> New Project</button>
             </div>
 
-            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)', marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
-                    <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input type="text" placeholder="Search projects by name or ID..." style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
-                </div>
-                <button className="btn secondary-btn" style={{ gap: '0.5rem' }}><Filter size={18}/> Filter</button>
-            </div>
+
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
                 {loadingData ? <div style={{textAlign: 'center', width: '100%'}}>Loading...</div> : 
@@ -360,20 +394,6 @@ const DashboardAdmin = () => {
                     <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.2rem' }}>Manage system access and team members.</p>
                 </div>
                 <button onClick={() => openUserModal()} className="btn primary-btn" style={{ gap: '0.5rem' }}><Plus size={18}/> Add User</button>
-            </div>
-
-            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)', marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
-                    <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input type="text" placeholder="Search users by name or email..." style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
-                </div>
-                <select style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)', minWidth: '150px' }}>
-                    <option value="">All Roles</option>
-                    <option value="admin">Admin</option>
-                    <option value="project_manager">Project Manager</option>
-                    <option value="engineer">Engineer</option>
-                    <option value="contractor">Contractor</option>
-                </select>
             </div>
 
             <div className="data-table-container">

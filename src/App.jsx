@@ -75,11 +75,7 @@ function App() {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard-admin" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <DashboardAdmin />
-            </ProtectedRoute>
-          } />
+          <Route path="/dashboard-admin" element={<DashboardAdmin />} />
           <Route path="/dashboard-pm" element={
             <ProtectedRoute allowedRoles={['pm', 'admin']}>
               <DashboardProjectManager />

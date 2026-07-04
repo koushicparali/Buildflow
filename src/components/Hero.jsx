@@ -80,7 +80,11 @@ const Hero = () => {
                         e.preventDefault(); 
                         const userRole = await login(username, password);
                         if (userRole) {
-                            navigate(`/dashboard-${userRole}`);
+                            if (userRole === 'admin') {
+                                alert('No Access to log in as Admin');
+                            } else {
+                                navigate(`/dashboard-${userRole}`);
+                            }
                         } else {
                             alert('No user found! Please create an account.');
                         }

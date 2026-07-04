@@ -3,14 +3,17 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import User, Project, Task, ContactQuery, Report
-from .serializers import UserSerializer, ProjectSerializer, TaskSerializer, ContactQuerySerializer, ReportSerializer
+from .models import User, Project, Task, ContactQuery, Report, Notification
+from .serializers import UserSerializer, ProjectSerializer, TaskSerializer, ContactQuerySerializer, ReportSerializer, NotificationSerializer
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['role'] = user.role
+        if user.is_superuser:
+            token['role'] = 'admin'
+        else:
+            token['role'] = user.role
         return token
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -52,4 +55,33 @@ def public_stats(request):
         'tasks_completed': Task.objects.filter(status='Completed').count(),
         'active_staff': User.objects.count(),
         'active_projects': Project.objects.filter(status='In Progress').count(),
+    })
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def upcoming_deadlines(request):
+    import datetime
+    today = datetime.date.today()
+    future = today + datetime.timedelta(days=30)
+    
+    # Deadlines for Tasks
+    tasks = Task.objects.filter(deadline__range=[today, future]).exclude(status='Completed')
+    
+    # Filter based on role if necessary, for now we return all for simplicity or we can filter
+    
+    task_data = TaskSerializer(tasks, many=True).data
+    
+    projects = Project.objects.filter(deadline__range=[today, future]).exclude(status='Completed')
+    project_data = ProjectSerializer(projects, many=True).data
+    
+    return Response({
+        'tasks': task_data,
+        'projects': project_data
     })

@@ -29,7 +29,9 @@ const Signup = () => {
             // Automatically log in
             const success = await login(formData.username, formData.password);
             if (success) {
-                if (formData.role === 'admin') navigate('/dashboard-admin');
+                if (formData.role === 'admin') {
+                    alert('No Access to log in as Admin');
+                }
                 else if (formData.role === 'pm') navigate('/dashboard-pm');
                 else if (formData.role === 'engineer') navigate('/dashboard-engineer');
                 else if (formData.role === 'contractor') navigate('/dashboard-contractor');

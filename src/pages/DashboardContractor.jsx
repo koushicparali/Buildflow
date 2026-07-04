@@ -151,35 +151,7 @@ const DashboardContractor = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '3rem' }}>
-                <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-                    <h3 style={{ marginBottom: '1rem', color: 'var(--text-main)', fontSize: '1.2rem' }}>Recent Activities</h3>
-                    <div className="timeline">
-                        {recentActivities.map((act) => (
-                            <div key={act.id} style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,140,0,0.1)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <HardHat size={20} />
-                                </div>
-                                <div>
-                                    <div style={{ color: 'var(--text-main)', fontWeight: 600 }}>{act.message}</div>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{act.time}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-                    <h3 style={{ marginBottom: '1rem', color: 'var(--text-main)', fontSize: '1.2rem' }}>Notifications</h3>
-                    <div className="notifications-list">
-                        {notifications.map((notif) => (
-                            <div key={notif.id} style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', marginBottom: '1rem', borderLeft: `4px solid ${notif.type === 'error' ? 'var(--error)' : 'var(--accent)'}` }}>
-                                <div style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{notif.title}</div>
-                                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{notif.description}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+
         </>
     );
 

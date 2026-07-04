@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Project, Task, ContactQuery, Report
+from .models import User, Project, Task, ContactQuery, Report, Notification
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
@@ -46,5 +46,11 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ContactQuerySerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactQuery
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
         fields = '__all__'
         read_only_fields = ['id', 'created_at']

@@ -49,6 +49,7 @@ const Navbar = () => {
                                 <li><Link to="#projects" className={location.hash === '#projects' ? 'active' : ''} onClick={closeMenu}>Projects</Link></li>
                                 <li><Link to="#tasks" className={location.hash === '#tasks' ? 'active' : ''} onClick={closeMenu}>Tasks</Link></li>
                                 <li><Link to="#reports" className={location.hash === '#reports' ? 'active' : ''} onClick={closeMenu}>Reports</Link></li>
+                                <li><Link to="#alerts" className={location.hash === '#alerts' ? 'active' : ''} onClick={closeMenu}>Alerts</Link></li>
                             </>
                         ) : user?.role === 'engineer' ? (
                             <>
