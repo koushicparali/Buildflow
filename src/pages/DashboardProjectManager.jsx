@@ -284,7 +284,7 @@ const DashboardProjectManager = () => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.5rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={16} /> New York HQ (Mock)</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={16} /> New York HQ</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><DollarSign size={16} /> Budget: ₹{Number(project.budget || 0).toLocaleString('en-IN')}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><UserPlus size={16} /> PM: {usersList.find(u => u.id === project.created_by)?.username || 'Unknown'}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} /> Due: {project.deadline || 'Ongoing'}</span>
@@ -473,7 +473,7 @@ const DashboardProjectManager = () => {
                         <form onSubmit={handleProjectSubmit}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                                 <input name="title" defaultValue={editProject?.title} placeholder="Project Name" required style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
-                                <input name="location" placeholder="Location (Mock)" defaultValue="New York HQ" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
+                                <input name="location" placeholder="Location" defaultValue="New York HQ" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
                                 <input name="budget" type="number" step="0.01" defaultValue={editProject?.budget} placeholder="Budget (₹)" required style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
                                 <div style={{ display: 'flex', gap: '1rem' }}>
                                     <input name="start_date" type="date" placeholder="Start Date" style={{ flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)', colorScheme: 'dark' }} />

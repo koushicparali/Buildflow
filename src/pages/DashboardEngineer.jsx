@@ -29,7 +29,7 @@ const DashboardEngineer = () => {
             const allTasks = await apiFetch('/tasks/');
             const deadlinesRes = await apiFetch('/upcoming-deadlines/');
             
-            // In a real app, backend should filter. Here we filter locally for safety.
+            // Filter locally for safety.
             if (allTasks && !allTasks.error) {
                 const myTasks = allTasks.filter(t => t.assigned_engineer === user?.user_id);
                 setTasksList(myTasks);

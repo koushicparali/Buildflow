@@ -369,7 +369,7 @@ const DashboardAdmin = () => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.5rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={16} /> Location: New York HQ (Mock)</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={16} /> Location: New York HQ</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><DollarSign size={16} /> Budget: ₹{Number(project.budget || 0).toLocaleString('en-IN')}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={16} /> Manager: {usersList.find(u => u.id === project.created_by)?.username || 'Unknown'}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} /> Due: {project.deadline || 'Ongoing'}</span>
