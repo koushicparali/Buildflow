@@ -9,10 +9,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'role', 'first_name', 'last_name', 'password', 'profile_pic']
         read_only_fields = ['id']
 
-class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True)
-
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         user = super().create(validated_data)
@@ -21,13 +17,9 @@ class ChangePasswordSerializer(serializers.Serializer):
             user.save()
         return user
 
-    def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
-        user = super().update(instance, validated_data)
-        if password:
-            user.set_password(password)
-            user.save()
-        return user
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
 
 class TaskSerializer(serializers.ModelSerializer):
     invoice_content = serializers.SerializerMethodField()

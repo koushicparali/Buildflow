@@ -661,10 +661,12 @@ const DashboardAdmin = () => {
                                 <input name="first_name" defaultValue={editUser?.first_name} placeholder="First Name" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
                                 <input name="last_name" defaultValue={editUser?.last_name} placeholder="Last Name" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
                                 <input name="password" type="password" placeholder={editUser ? "Leave blank to keep current password" : "Password"} required={!editUser} style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
-                                <select name="role" defaultValue={editUser?.role || "engineer"} required style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+                                <select name="role" defaultValue={editUser?.role || "unassigned"} required style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+                                    <option value="unassigned">Unassigned (Pending)</option>
                                     <option value="admin">Admin</option>
                                     <option value="pm">Project Manager</option>
                                     <option value="engineer">Engineer</option>
+                                    <option value="client">Client</option>
                                 </select>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>

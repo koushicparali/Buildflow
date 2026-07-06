@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { apiFetch } from '../utils/api';
 import { X, Camera, Lock, User, Upload } from 'lucide-react';
+import ImageCropperModal from './ImageCropperModal';
 
 const ProfileModal = ({ onClose }) => {
     const { user, updateUser } = useAuth();
@@ -18,6 +19,9 @@ const ProfileModal = ({ onClose }) => {
     const [email, setEmail] = useState('');
     const [profilePic, setProfilePic] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(user?.profile_pic || null);
+    
+    const [cropImageSrc, setCropImageSrc] = useState(null);
+    const [showCropper, setShowCropper] = useState(false);
     
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -35,11 +39,23 @@ const ProfileModal = ({ onClose }) => {
     }, [user]);
 
     const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setProfilePic(file);
-            setPreviewUrl(URL.createObjectURL(file));
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                setCropImageSrc(reader.result);
+                setShowCropper(true);
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
         }
+    };
+
+    const handleCropComplete = (croppedFile) => {
+        setProfilePic(croppedFile);
+        setPreviewUrl(URL.createObjectURL(croppedFile));
+        setShowCropper(false);
+        setCropImageSrc(null);
     };
 
     const handleUpdateProfile = async (e) => {
@@ -262,6 +278,16 @@ const ProfileModal = ({ onClose }) => {
                 </div>
 
             </div>
+            {showCropper && (
+                <ImageCropperModal
+                    imageSrc={cropImageSrc}
+                    onCropComplete={handleCropComplete}
+                    onCancel={() => {
+                        setShowCropper(false);
+                        setCropImageSrc(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

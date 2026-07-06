@@ -23,6 +23,7 @@ const DashboardClient = lazy(() => import('./pages/DashboardClient'));
 const ClientProjectWorkspace = lazy(() => import('./pages/ClientProjectWorkspace'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
+const PendingApproval = lazy(() => import('./pages/PendingApproval'));
 import './index.css';
 
 const ScrollToTopAndReveal = () => {
@@ -98,6 +99,7 @@ function App() {
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/pending-approval" element={<PendingApproval />} />
                 <Route path="/dashboard-admin" element={<DashboardAdmin />} />
                 <Route path="/dashboard-pm" element={
                   <ProtectedRoute allowedRoles={['pm', 'admin']}>

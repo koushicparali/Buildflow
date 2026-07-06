@@ -25,6 +25,19 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def check_username(self, request):
+        username = request.query_params.get('username')
+        if not username:
+            return Response({'error': 'Username parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        exists = User.objects.filter(username=username).exists()
+        return Response({'exists': exists})
+
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth import update_session_auth_hash
 from .serializers import ChangePasswordSerializer
@@ -54,10 +67,7 @@ def change_password(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+
 
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer

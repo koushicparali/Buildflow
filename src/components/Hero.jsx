@@ -84,6 +84,9 @@ const Hero = () => {
                         if (userRole) {
                             if (userRole === 'admin') {
                                 addToast(`You shouldn't be here. The shadows are watching. Access denied.`, 'error');
+                            } else if (userRole === 'unassigned') {
+                                addToast('Login successful! Awaiting admin approval.', 'success');
+                                navigate('/pending-approval');
                             } else {
                                 addToast('Login successful!', 'success');
                                 navigate(`/dashboard-${userRole}`);

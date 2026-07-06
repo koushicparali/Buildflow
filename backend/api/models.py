@@ -7,8 +7,9 @@ class User(AbstractUser):
         ('pm', 'Project Manager'),
         ('engineer', 'Engineer'),
         ('client', 'Client'),
+        ('unassigned', 'Unassigned'),
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='engineer')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='unassigned')
     profile_pic = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
 
     def __str__(self):
