@@ -8,6 +8,8 @@ import LoadingSpinner from './components/LoadingSpinner';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
+import { ToastProvider } from './context/ToastContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 const Features = lazy(() => import('./pages/Features'));
 const About = lazy(() => import('./pages/About'));
@@ -17,7 +19,8 @@ const Signup = lazy(() => import('./pages/Signup'));
 const DashboardAdmin = lazy(() => import('./pages/DashboardAdmin'));
 const DashboardProjectManager = lazy(() => import('./pages/DashboardProjectManager'));
 const DashboardEngineer = lazy(() => import('./pages/DashboardEngineer'));
-const DashboardContractor = lazy(() => import('./pages/DashboardContractor'));
+const DashboardClient = lazy(() => import('./pages/DashboardClient'));
+const ClientProjectWorkspace = lazy(() => import('./pages/ClientProjectWorkspace'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 import './index.css';
@@ -52,14 +55,7 @@ const ScrollToTopAndReveal = () => {
   return null;
 };
 
-const FloatingAction = () => {
-  return (
-    <button className="floating-action-btn" onClick={() => window.dispatchEvent(new Event('openQuoteModal'))}>
-      <MessageCircle size={26} />
-      <span className="floating-action-tooltip">Get a Quote</span>
-    </button>
-  );
-};
+
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -67,54 +63,72 @@ function App() {
   useEffect(() => {
     const handleOpen = () => setIsModalOpen(true);
     window.addEventListener('openQuoteModal', handleOpen);
-    return () => window.removeEventListener('openQuoteModal', handleOpen);
+
+    const handleMouseMove = (e) => {
+      document.documentElement.style.setProperty('--mouse-x', `${e.clientX}px`);
+      document.documentElement.style.setProperty('--mouse-y', `${e.clientY}px`);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      window.removeEventListener('openQuoteModal', handleOpen);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
   }, []);
 
   return (
     <Router>
-      <AuthProvider>
-        <ScrollToTopAndReveal />
-        <div className="ambient-orbs">
-          <div className="orb orb-1"></div>
-          <div className="orb orb-2"></div>
-          <div className="orb orb-3"></div>
-        </div>
-        <div className="bg-grid"></div>
-        <FloatingAction />
-        <Navbar />
-        
-        <Suspense fallback={<LoadingSpinner />}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/faq" element={<FAQ />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard-admin" element={<DashboardAdmin />} />
-          <Route path="/dashboard-pm" element={
-            <ProtectedRoute allowedRoles={['pm', 'admin']}>
-              <DashboardProjectManager />
-            </ProtectedRoute>
-          } />
-          <Route path="/dashboard-engineer" element={
-            <ProtectedRoute allowedRoles={['engineer', 'admin']}>
-              <DashboardEngineer />
-            </ProtectedRoute>
-          } />
-          <Route path="/dashboard-contractor" element={
-            <ProtectedRoute allowedRoles={['contractor', 'admin']}>
-              <DashboardContractor />
-            </ProtectedRoute>
-          } />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-        </Routes>
-      </Suspense>
+      <ToastProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <ScrollToTopAndReveal />
+            <div className="ambient-orbs">
+              <div className="orb orb-1"></div>
+              <div className="orb orb-2"></div>
+              <div className="orb orb-3"></div>
+            </div>
+            <div className="bg-grid"></div>
+            <Navbar />
+            
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/features" element={<Features />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/dashboard-admin" element={<DashboardAdmin />} />
+                <Route path="/dashboard-pm" element={
+                  <ProtectedRoute allowedRoles={['pm', 'admin']}>
+                    <DashboardProjectManager />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard-engineer" element={
+                  <ProtectedRoute allowedRoles={['engineer', 'admin']}>
+                    <DashboardEngineer />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard-client" element={
+                  <ProtectedRoute allowedRoles={['client', 'admin']}>
+                    <DashboardClient />
+                  </ProtectedRoute>
+                } />
+                <Route path="/client-project/:id" element={
+                  <ProtectedRoute allowedRoles={['client', 'admin', 'pm', 'engineer']}>
+                    <ClientProjectWorkspace />
+                  </ProtectedRoute>
+                } />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+              </Routes>
+            </Suspense>
 
-      <QuoteModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      <Footer />
-      </AuthProvider>
+            <QuoteModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+            <Footer />
+          </NotificationProvider>
+        </AuthProvider>
+      </ToastProvider>
     </Router>
   );
 }

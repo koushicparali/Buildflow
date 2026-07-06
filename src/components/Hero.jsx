@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const slideData = [
-    { title: "Empower Your Staff & Track Progress", text: "Assign tasks, monitor real-time progress, and streamline communication across the entire site.", bg: "/assets/slide1.webp" },
-    { title: "Real-Time Site Analytics", text: "Get actionable insights and live updates directly from your construction sites to stay ahead of schedule.", bg: "/assets/slide2.webp" },
-    { title: "Seamless Team Collaboration", text: "Connect everyone from the field workers to the back office in one unified, easy-to-use platform.", bg: "/assets/slide3.webp" },
-    { title: "Boost Project Efficiency", text: "Save hours of administrative work, reduce delays, and focus on building faster and better.", bg: "/assets/slide4.webp" }
+    { title: "Enterprise Construction Management", text: "End-to-end task tracking, role-based dashboards, and complete oversight from the field to the back office.", bg: "/assets/slide1.webp" },
+    { title: "Intelligent Notification Engine", text: "Stay informed with real-time, context-aware alerts for task updates, milestones, and project approvals.", bg: "/assets/slide2.webp" },
+    { title: "Transparent Client Collaboration", text: "Give your clients peace of mind with total visibility into project milestones, live task updates, and progress.", bg: "/assets/slide3.webp" },
+    { title: "Collaborative Project Workspaces", text: "Connect clients, engineers, and project managers in a unified hub for files, comments, and reports.", bg: "/assets/slide4.webp" }
 ];
 
 const Hero = () => {
@@ -15,6 +16,7 @@ const Hero = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const { login } = useAuth();
+    const { addToast } = useToast();
     const navigate = useNavigate();
     
     // Manage slider timer
@@ -71,22 +73,23 @@ const Hero = () => {
                 <div className="hero-content" style={{ opacity: isFading ? 0 : 1, transition: 'opacity 0.3s ease' }}>
                     <h1 style={{ letterSpacing: '-0.03em' }}>{slideData[currentSlide].title}</h1>
                     <p style={{ fontSize: '1.2rem', lineHeight: '1.6' }}>{slideData[currentSlide].text}</p>
-                    <button className="btn accent-btn modal-trigger" onClick={() => window.dispatchEvent(new CustomEvent('openQuoteModal'))}>Get Started</button>
+                    <button className="btn accent-btn" onClick={() => document.getElementById('query').scrollIntoView({ behavior: 'smooth' })}>Get Started</button>
                 </div>
                 
-                <div className="hero-login-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-light)', boxShadow: 'var(--card-shadow)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+                <div className="hero-login-card scale-in" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-light)', boxShadow: 'var(--card-shadow)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
                     <h2 style={{ letterSpacing: '-0.025em', marginBottom: '2rem' }}>Welcome Back</h2>
                     <form id="heroLoginForm" onSubmit={async (e) => { 
                         e.preventDefault(); 
                         const userRole = await login(username, password);
                         if (userRole) {
                             if (userRole === 'admin') {
-                                alert('No Access to log in as Admin');
+                                addToast(`You shouldn't be here. The shadows are watching. Access denied.`, 'error');
                             } else {
+                                addToast('Login successful!', 'success');
                                 navigate(`/dashboard-${userRole}`);
                             }
                         } else {
-                            alert('No user found! Please create an account.');
+                            addToast('Invalid credentials. Please try again.', 'error');
                         }
                     }}>
                         <div className="form-group">

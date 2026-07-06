@@ -22,7 +22,6 @@ def seed_data():
         {'username': 'admin', 'role': 'admin', 'password': 'password123', 'email': 'admin@buildflow.com', 'first_name': 'Super', 'last_name': 'Admin'},
         {'username': 'test@pm', 'role': 'pm', 'password': 'password123', 'email': 'pm@buildflow.com', 'first_name': 'Sarah', 'last_name': 'Manager'},
         {'username': 'test@engineer', 'role': 'engineer', 'password': 'password123', 'email': 'engineer@buildflow.com', 'first_name': 'John', 'last_name': 'Engineer'},
-        {'username': 'test@contractor', 'role': 'contractor', 'password': 'password123', 'email': 'contractor@buildflow.com', 'first_name': 'Bob', 'last_name': 'Builder'},
     ]
 
     user_objs = {}
@@ -98,9 +97,6 @@ def seed_data():
         )
         project.created_at = created_date
         project.save()
-        
-        # Assign Contractor
-        project.assigned_contractors.add(user_objs['contractor'])
 
         # Generate Tasks
         num_tasks = random.randint(8, 15)
@@ -138,7 +134,6 @@ def seed_data():
                 description=f"Standard execution protocol for {t_title.lower()} at {project.title}.",
                 project=project,
                 assigned_engineer=user_objs['engineer'],
-                assigned_contractor=user_objs['contractor'],
                 priority=t_priority,
                 status=t_status,
                 progress=t_prog,

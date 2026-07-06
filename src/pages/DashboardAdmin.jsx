@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { apiFetch } from '../utils/api';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useLocation } from 'react-router-dom';
-import { FolderKanban, CheckCircle, Users, ListTodo, Plus, Filter, Edit, Trash2, MapPin, DollarSign, Calendar, Check, Bell } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { FolderKanban, CheckCircle, Users, ListTodo, Plus, Filter, Edit, Trash2, MapPin, DollarSign, Calendar, Check, Bell, Globe, ShieldCheck, Eye } from 'lucide-react';
+import FileGallery from '../components/FileGallery';
+import ActivityFeed from '../components/ActivityFeed';
+import CommentsPanel from '../components/CommentsPanel';
+import { usePolling } from '../hooks/usePolling';
+import { usePrevious } from '../hooks/usePrevious';
 
 const DashboardAdmin = () => {
-    const { user } = useAuth();
+    const { user, login } = useAuth();
+    const { addToast } = useToast();
     const location = useLocation();
+    const navigate = useNavigate();
     const [usersList, setUsersList] = useState([]);
     const [projectsList, setProjectsList] = useState([]);
     const [tasksList, setTasksList] = useState([]);
@@ -15,25 +23,28 @@ const DashboardAdmin = () => {
     const [notificationsList, setNotificationsList] = useState([]);
     const [upcomingDeadlinesList, setUpcomingDeadlinesList] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
-    const [isUnlocked, setIsUnlocked] = useState(false);
+    const [isUnlocked, setIsUnlocked] = useState(() => sessionStorage.getItem('admin_unlocked') === 'true');
     const [adminPassword, setAdminPassword] = useState('');
     const [loginError, setLoginError] = useState('');
     const [showUserModal, setShowUserModal] = useState(false);
     const [editUser, setEditUser] = useState(null);
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [editProject, setEditProject] = useState(null);
-    const { login } = useAuth(); // assuming login is available from useAuth
+    const [selectedProjectForEcosystem, setSelectedProjectForEcosystem] = useState('');
+    const [userToDelete, setUserToDelete] = useState(null);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-    const fetchData = async () => {
-        setLoadingData(true);
+    const fetchData = async (isPolling = false) => {
+        if (!isPolling) setLoadingData(true);
         try {
-            const [usersRes, projectsRes, tasksRes, queriesRes, notificationsRes, deadlinesRes] = await Promise.all([
-                apiFetch('/users/'),
-                apiFetch('/projects/'),
-                apiFetch('/tasks/'),
-                apiFetch('/contact-queries/'),
-                apiFetch('/notifications/'),
-                apiFetch('/upcoming-deadlines/')
+            const [usersRes, projectsRes, tasksRes, notificationsRes, queriesRes, deadlinesRes] = await Promise.all([
+                apiFetch('/users/').catch(e => ({ error: e.message })),
+                apiFetch('/projects/').catch(e => ({ error: e.message })),
+                apiFetch('/tasks/').catch(e => ({ error: e.message })),
+                apiFetch('/notifications/').catch(e => ({ error: e.message })),
+                apiFetch('/queries/').catch(e => ({ error: e.message })),
+                apiFetch('/upcoming-deadlines/').catch(e => ({ error: e.message }))
             ]);
             
             if(usersRes && !usersRes.error) setUsersList(usersRes);
@@ -45,7 +56,7 @@ const DashboardAdmin = () => {
         } catch (e) {
             console.error("Error fetching data:", e);
         }
-        setLoadingData(false);
+        if (!isPolling) setLoadingData(false);
     };
 
     useEffect(() => {
@@ -54,17 +65,48 @@ const DashboardAdmin = () => {
         }
     }, [isUnlocked]);
 
+    usePolling(() => {
+        if (isUnlocked) fetchData(true);
+    }, 30000, [isUnlocked]);
+
+    const prevNotificationsList = usePrevious(notificationsList);
+    const initialLoadDone = React.useRef(false);
+
+    useEffect(() => {
+        if (!initialLoadDone.current && notificationsList.length > 0) {
+            initialLoadDone.current = true;
+            return;
+        }
+
+        if (initialLoadDone.current && prevNotificationsList && notificationsList.length > prevNotificationsList.length) {
+            const newNotifs = notificationsList.filter(n => !prevNotificationsList.find(pn => pn.id === n.id));
+            newNotifs.forEach(n => {
+                addToast(n.message, n.type === 'Alert' ? 'error' : 'info');
+            });
+        }
+    }, [notificationsList]);
+
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [location.hash]);
 
+    useEffect(() => {
+        if (!isUnlocked) {
+            document.body.classList.add('admin-locked');
+        } else {
+            document.body.classList.remove('admin-locked');
+        }
+        return () => document.body.classList.remove('admin-locked');
+    }, [isUnlocked]);
+
     const handleUnlock = async (e) => {
         e.preventDefault();
         setLoginError('');
-        // Attempt login as admin1 with the provided password
-        const role = await login('admin1', adminPassword);
+        // Attempt login with the current user's username and provided password to verify admin access
+        const role = await login(user?.username || 'admin_test', adminPassword);
         if (role === 'admin') {
             setIsUnlocked(true);
+            sessionStorage.setItem('admin_unlocked', 'true');
         } else {
             setLoginError('Incorrect password or admin account not configured.');
         }
@@ -72,19 +114,19 @@ const DashboardAdmin = () => {
 
     if (!isUnlocked) {
         return (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)' }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
                 <div style={{ background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '16px', border: '1px solid var(--border-light)', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: 'var(--card-shadow)' }}>
                     <h2 style={{ color: 'var(--text-main)', marginBottom: '1.5rem' }}>Admin Access</h2>
                     {loginError && <div style={{ color: 'var(--error)', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px' }}>{loginError}</div>}
                     <form onSubmit={handleUnlock}>
-                        <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
+                        <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
                             <label style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Password</label>
                             <input 
                                 type="password" 
                                 value={adminPassword} 
                                 onChange={(e) => setAdminPassword(e.target.value)} 
                                 placeholder="Enter admin password..."
-                                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-main)', color: 'var(--text-main)' }}
+                                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-main)', color: 'var(--text-main)', textAlign: 'center' }}
                                 required
                             />
                         </div>
@@ -96,17 +138,62 @@ const DashboardAdmin = () => {
     }
 
     // Handlers
-    const handleDeleteUser = async (id) => {
-        if(window.confirm('Are you sure you want to delete this user?')) {
-            await apiFetch(`/users/${id}/`, { method: 'DELETE' });
+    const initiateDeleteUser = (usr) => {
+        if (usr.id === user?.user_id || usr.id === user?.id) {
+            addToast('You cannot delete your own account!', 'error');
+            return;
+        }
+        setUserToDelete(usr);
+        setDeletePassword('');
+        setShowDeleteModal(true);
+    };
+
+    const confirmDeleteUser = async (e) => {
+        e.preventDefault();
+        if (!userToDelete) return;
+
+        if (userToDelete.role === 'admin') {
+            if (!deletePassword) {
+                addToast('Admin deletion requires your password.', 'error');
+                return;
+            }
+            try {
+                // Verify current admin's password
+                const response = await fetch('http://localhost:8000/api/token/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user?.username || 'admin', password: deletePassword })
+                });
+                if (!response.ok) {
+                    addToast('Incorrect password. Deletion aborted.', 'error');
+                    return;
+                }
+            } catch (err) {
+                addToast('Error verifying password.', 'error');
+                return;
+            }
+        }
+
+        try {
+            await apiFetch(`/users/${userToDelete.id}/`, { method: 'DELETE' });
+            addToast('User deleted successfully', 'success');
+            setShowDeleteModal(false);
+            setUserToDelete(null);
             fetchData();
+        } catch (err) {
+            addToast('Failed to delete user', 'error');
         }
     };
 
     const handleDeleteProject = async (id) => {
         if(window.confirm('Are you sure you want to delete this project?')) {
-            await apiFetch(`/projects/${id}/`, { method: 'DELETE' });
-            fetchData();
+            try {
+                await apiFetch(`/projects/${id}/`, { method: 'DELETE' });
+                addToast('Project deleted successfully', 'success');
+                fetchData();
+            } catch (err) {
+                addToast('Failed to delete project', 'error');
+            }
         }
     };
 
@@ -120,7 +207,7 @@ const DashboardAdmin = () => {
         setShowProjectModal(true);
     };
 
-    const currentTab = location.hash || '#overview';
+    const currentTab = ['#overview', '#projects', '#users', '#queries'].includes(location.hash) ? location.hash : '#overview';
 
     // Calculate Dynamic Stats
     const totalProjects = projectsList.length;
@@ -187,10 +274,17 @@ const DashboardAdmin = () => {
     }
 
     const renderOverview = () => (
-        <>
-                <div className="dashboard-header" style={{ marginBottom: '2.5rem' }}>
-                    <h2>Welcome, Administrator!</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.2rem' }}>Here is a top-level view of all system activities.</p>
+        <div className="tab-pane reveal-fade slide-up">
+                <div className="dashboard-header dash-card" style={{ marginBottom: '2.5rem', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', border: '1px solid var(--accent)', borderLeft: '4px solid var(--accent)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                        <div style={{ padding: '1rem', background: 'rgba(255, 140, 0, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ShieldCheck size={36} style={{ color: 'var(--accent)' }} />
+                        </div>
+                        <div>
+                            <h2 style={{ marginBottom: '0.2rem', color: 'var(--text-main)', fontSize: '1.8rem' }}>Welcome, Administrator!</h2>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>Here is a top-level view of all system activities.</p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Stat Cards Row */}
@@ -339,15 +433,20 @@ const DashboardAdmin = () => {
                     </div>
 
                 </div>
-        </>
+        </div>
     );
 
     const renderProjects = () => (
-        <>
-            <div className="dashboard-header" style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <div>
-                    <h2>Project Management</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.2rem' }}>Monitor and manage all construction projects.</p>
+        <div className="tab-pane reveal-fade slide-up">
+            <div className="dashboard-header dash-card" style={{ marginBottom: '2.5rem', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--accent)', borderLeft: '4px solid var(--accent)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(255, 140, 0, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <FolderKanban size={36} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div>
+                        <h2 style={{ marginBottom: '0.2rem', color: 'var(--text-main)', fontSize: '1.8rem' }}>Project Management</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>Monitor and manage all construction projects.</p>
+                    </div>
                 </div>
                 <button onClick={() => openProjectModal()} className="btn primary-btn" style={{ gap: '0.5rem' }}><Plus size={18}/> New Project</button>
             </div>
@@ -369,7 +468,8 @@ const DashboardAdmin = () => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.5rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={16} /> Location: New York HQ</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={16} /> Location: {project.location || 'New York HQ'}</span>
+                                {project.description && <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ListTodo size={16} /> Details: {project.description}</span>}
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><DollarSign size={16} /> Budget: ₹{Number(project.budget || 0).toLocaleString('en-IN')}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={16} /> Manager: {usersList.find(u => u.id === project.created_by)?.username || 'Unknown'}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} /> Due: {project.deadline || 'Ongoing'}</span>
@@ -385,77 +485,85 @@ const DashboardAdmin = () => {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '0.8rem' }}>
-                                <button className="btn outline-btn" style={{ flex: 1, padding: '0.6rem' }} onClick={() => openProjectModal(project)}><Edit size={16} /> Edit Project</button>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <button className="btn outline-btn" style={{ flex: 1, padding: '0.6rem' }} onClick={() => navigate(`/client-project/${project.id}`)}><Eye size={16} /> View</button>
+                                <button className="btn outline-btn" style={{ flex: 1, padding: '0.6rem' }} onClick={() => openProjectModal(project)}><Edit size={16} /> Edit</button>
                                 <button className="btn outline-btn" style={{ padding: '0.6rem', color: 'var(--error)' }} onClick={() => handleDeleteProject(project.id)}><Trash2 size={16} /></button>
                             </div>
                         </div>
                     );
                 })}
             </div>
-        </>
+        </div>
     );
 
     const renderUsers = () => (
-        <>
-            <div className="dashboard-header" style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <div>
-                    <h2>Users & Teams</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.2rem' }}>Manage system access and team members.</p>
+        <div className="tab-pane reveal-fade slide-up">
+            <div className="dashboard-header dash-card" style={{ marginBottom: '2.5rem', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--accent)', borderLeft: '4px solid var(--accent)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(255, 140, 0, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Users size={36} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div>
+                        <h2 style={{ marginBottom: '0.2rem', color: 'var(--text-main)', fontSize: '1.8rem' }}>Users & Teams</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>Manage system access and team members.</p>
+                    </div>
                 </div>
                 <button onClick={() => openUserModal()} className="btn primary-btn" style={{ gap: '0.5rem' }}><Plus size={18}/> Add User</button>
             </div>
 
             <div className="data-table-container">
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th>User ID</th>
-                            <th>Name</th>
-                            <th>Role</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loadingData ? (<tr><td colSpan="7" style={{textAlign: 'center'}}>Loading...</td></tr>) : 
-                        usersList.map((usr) => (
-                            <tr key={usr.id}>
-                                <td style={{ color: 'var(--text-muted)' }}>USR-{usr.id}</td>
-                                <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                                            {(usr.first_name?.[0] || usr.username[0]).toUpperCase()}
-                                        </div>
-                                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{usr.first_name ? `${usr.first_name} ${usr.last_name}` : usr.username}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-                                        {usr.role.replace('_', ' ')}
-                                    </span>
-                                </td>
-                                <td style={{ color: 'var(--text-muted)' }}>{usr.email}</td>
-                                <td style={{ color: 'var(--text-muted)' }}>-</td>
-                                <td>
-                                    <span className={`status-pill success`}>
-                                        Active
-                                    </span>
-                                </td>
-                                <td>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button onClick={() => openUserModal(usr)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Edit size={18}/></button>
-                                        <button onClick={() => handleDeleteUser(usr.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><Trash2 size={18}/></button>
-                                    </div>
-                                </td>
+                <div className="table-responsive">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {loadingData ? (<tr><td colSpan="7" style={{textAlign: 'center'}}>Loading...</td></tr>) : 
+                            usersList.map((usr) => (
+                                <tr key={usr.id}>
+                                    <td style={{ color: 'var(--text-muted)' }}>USR-{usr.id}</td>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                                                {(usr.first_name?.[0] || usr.username[0]).toUpperCase()}
+                                            </div>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{usr.first_name ? `${usr.first_name} ${usr.last_name}` : usr.username}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                                            {usr.role.replace('_', ' ')}
+                                        </span>
+                                    </td>
+                                    <td style={{ color: 'var(--text-muted)' }}>{usr.email}</td>
+                                    <td style={{ color: 'var(--text-muted)' }}>-</td>
+                                    <td>
+                                        <span className={`status-pill success`}>
+                                            Active
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button onClick={() => openUserModal(usr)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Edit size={18}/></button>
+                                            <button onClick={() => initiateDeleteUser(usr)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><Trash2 size={18}/></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </>
+        </div>
     );
 
     const markQueryRead = async (queryId) => {
@@ -471,10 +579,15 @@ const DashboardAdmin = () => {
     };
 
     const renderQueries = () => (
-        <>
-            <div className="dashboard-header" style={{ marginBottom: '2.5rem' }}>
-                <h2>Client Queries</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.2rem' }}>Manage and respond to public contact form submissions.</p>
+        <div className="tab-pane reveal-fade slide-up">
+            <div className="dashboard-header dash-card" style={{ marginBottom: '2.5rem', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '1.5rem', border: '1px solid var(--accent)', borderLeft: '4px solid var(--accent)' }}>
+                <div style={{ padding: '1rem', background: 'rgba(255, 140, 0, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Bell size={36} style={{ color: 'var(--accent)' }} />
+                </div>
+                <div>
+                    <h2 style={{ marginBottom: '0.2rem', color: 'var(--text-main)', fontSize: '1.8rem' }}>Client Queries</h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>Manage and respond to public contact form submissions.</p>
+                </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {loadingData ? <div style={{textAlign: 'center'}}>Loading queries...</div> : 
@@ -505,7 +618,7 @@ const DashboardAdmin = () => {
                     </div>
                 ))}
             </div>
-        </>
+        </div>
     );
 
     return (
@@ -528,13 +641,19 @@ const DashboardAdmin = () => {
                             const data = Object.fromEntries(formData);
                             if(!data.password) delete data.password;
                             
-                            if(editUser) {
-                                await apiFetch(`/users/${editUser.id}/`, { method: 'PUT', body: JSON.stringify(data) });
-                            } else {
-                                await apiFetch('/users/', { method: 'POST', body: JSON.stringify(data) });
+                            try {
+                                if(editUser) {
+                                    await apiFetch(`/users/${editUser.id}/`, { method: 'PUT', body: JSON.stringify(data) });
+                                    addToast('User updated successfully', 'success');
+                                } else {
+                                    await apiFetch('/users/', { method: 'POST', body: JSON.stringify(data) });
+                                    addToast('User created successfully', 'success');
+                                }
+                                setShowUserModal(false);
+                                fetchData();
+                            } catch (err) {
+                                addToast('Error saving user details', 'error');
                             }
-                            setShowUserModal(false);
-                            fetchData();
                         }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                                 <input name="username" defaultValue={editUser?.username} placeholder="Username" required style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
@@ -546,7 +665,6 @@ const DashboardAdmin = () => {
                                     <option value="admin">Admin</option>
                                     <option value="pm">Project Manager</option>
                                     <option value="engineer">Engineer</option>
-                                    <option value="contractor">Contractor</option>
                                 </select>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
@@ -569,19 +687,41 @@ const DashboardAdmin = () => {
                             const data = Object.fromEntries(formData);
                             data.created_by = user?.user_id || 1; // Assuming 1 is default admin
                             
-                            if(editProject) {
-                                await apiFetch(`/projects/${editProject.id}/`, { method: 'PUT', body: JSON.stringify(data) });
-                            } else {
-                                await apiFetch('/projects/', { method: 'POST', body: JSON.stringify(data) });
+                            if (!data.client) {
+                                // Either empty on create, or disabled on edit. If edit, preserve existing client.
+                                if (editProject && editProject.client) {
+                                    data.client = editProject.client;
+                                } else {
+                                    data.client = null;
+                                }
                             }
-                            setShowProjectModal(false);
-                            fetchData();
+                            
+                            try {
+                                if(editProject) {
+                                    await apiFetch(`/projects/${editProject.id}/`, { method: 'PATCH', body: JSON.stringify(data) });
+                                    addToast('Project updated successfully', 'success');
+                                } else {
+                                    await apiFetch('/projects/', { method: 'POST', body: JSON.stringify(data) });
+                                    addToast('Project created successfully', 'success');
+                                }
+                                setShowProjectModal(false);
+                                fetchData();
+                            } catch (err) {
+                                addToast('Error saving project details', 'error');
+                            }
                         }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                                 <input name="title" defaultValue={editProject?.title} placeholder="Project Name" required style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
-                                <textarea name="description" defaultValue={editProject?.description} placeholder="Description" rows="3" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }}></textarea>
+                                <input name="location" defaultValue={editProject?.location} placeholder="Location" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
+                                <textarea name="description" defaultValue={editProject?.description} placeholder="Description (Details)" rows="3" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }}></textarea>
                                 <input name="budget" defaultValue={editProject?.budget} type="number" step="0.01" placeholder="Budget (₹)" required style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
                                 <input name="deadline" defaultValue={editProject?.deadline} type="date" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)', colorScheme: 'dark' }} />
+                                <select name="client" defaultValue={editProject?.client || ""} disabled={!!editProject} style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)', opacity: editProject ? 0.7 : 1 }}>
+                                    <option value="">-- Assign to Client (Optional) --</option>
+                                    {usersList.filter(u => u.role === 'client').map(u => (
+                                        <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
+                                    ))}
+                                </select>
                                 <select name="status" defaultValue={editProject?.status || "Planning"} required style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
                                     <option value="Planning">Planning</option>
                                     <option value="Active">Active</option>
@@ -594,6 +734,52 @@ const DashboardAdmin = () => {
                                 <button type="submit" className="btn primary-btn">{editProject ? 'Update Project' : 'Save Project'}</button>
                             </div>
                         </form>
+
+                        {editProject && (
+                            <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border-light)' }}>
+                                <h3 style={{ fontSize: '1.4rem', color: 'var(--text-main)', marginBottom: '1.5rem' }}>Workspace & Chats</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <FileGallery projectId={editProject.id} user={user} />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
+                                        <CommentsPanel projectId={editProject.id} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* DELETE CONFIRMATION MODAL */}
+            {showDeleteModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 }}>
+                    <div style={{ background: 'var(--bg-dark)', padding: '2.5rem', borderRadius: '16px', border: '1px solid var(--border-hover)', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+                        <h3 style={{ color: 'var(--text-main)', marginBottom: '1rem', fontSize: '1.4rem' }}>Confirm Deletion</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                            Are you sure you want to delete the user <strong>{userToDelete?.username}</strong>? This action cannot be undone.
+                        </p>
+
+                        {userToDelete?.role === 'admin' && (
+                            <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
+                                <label style={{ color: 'var(--error)', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>
+                                    Warning: Deleting an admin requires your password.
+                                </label>
+                                <input 
+                                    type="password" 
+                                    value={deletePassword} 
+                                    onChange={(e) => setDeletePassword(e.target.value)} 
+                                    placeholder="Enter your password..."
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--error)', background: 'var(--bg-card)', color: 'var(--text-main)' }}
+                                />
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button className="btn secondary-btn" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                            <button className="btn outline-btn" style={{ borderColor: 'var(--error)', color: 'var(--error)' }} onClick={confirmDeleteUser}>Yes, Delete</button>
+                        </div>
                     </div>
                 </div>
             )}

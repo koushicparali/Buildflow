@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../utils/api';
-import { useLocation } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
+import { apiFetch, apiFetchBlob } from '../utils/api';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     FolderKanban, Activity, CheckCircle, ListTodo, ClipboardList,
     TrendingUp, MapPin, Calendar, DollarSign, Clock, Plus,
-    UserPlus, Edit2, Trash2, FileText, Download, Eye, CheckCircle2, Bell
+    UserPlus, Edit2, Trash2, FileText, Download, Eye, CheckCircle2, Bell, Globe, ShieldCheck
 } from 'lucide-react';
+import FileGallery from '../components/FileGallery';
+import ActivityFeed from '../components/ActivityFeed';
+import CommentsPanel from '../components/CommentsPanel';
+import ChangeRequestsPanel from '../components/ChangeRequestsPanel';
+import { usePolling } from '../hooks/usePolling';
+import { usePrevious } from '../hooks/usePrevious';
 
 const DashboardProjectManager = () => {
     const { user } = useAuth();
+    const { addToast } = useToast();
     const location = useLocation();
-    const currentTab = location.hash || '#overview';
+    const navigate = useNavigate();
+    const currentTab = ['#overview', '#projects', '#tasks'].includes(location.hash) ? location.hash : '#overview';
 
     const [projectsList, setProjectsList] = useState([]);
     const [tasksList, setTasksList] = useState([]);
@@ -19,22 +28,24 @@ const DashboardProjectManager = () => {
     const [notificationsList, setNotificationsList] = useState([]);
     const [upcomingDeadlinesList, setUpcomingDeadlinesList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedProjectForEcosystem, setSelectedProjectForEcosystem] = useState('');
 
     // Modals state
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [editProject, setEditProject] = useState(null);
     const [editTask, setEditTask] = useState(null);
+    const [taskBudgetInput, setTaskBudgetInput] = useState('');
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchData = async (isPolling = false) => {
+        if (!isPolling) setLoading(true);
         try {
             const [usersRes, projectsRes, tasksRes, notificationsRes, deadlinesRes] = await Promise.all([
-                apiFetch('/users/'),
-                apiFetch('/projects/'),
-                apiFetch('/tasks/'),
-                apiFetch('/notifications/'),
-                apiFetch('/upcoming-deadlines/')
+                apiFetch('/users/').catch(e => ({ error: e.message })),
+                apiFetch('/projects/').catch(e => ({ error: e.message })),
+                apiFetch('/tasks/').catch(e => ({ error: e.message })),
+                apiFetch('/notifications/').catch(e => ({ error: e.message })),
+                apiFetch('/upcoming-deadlines/').catch(e => ({ error: e.message }))
             ]);
 
             if (usersRes && !usersRes.error) setUsersList(usersRes);
@@ -45,12 +56,33 @@ const DashboardProjectManager = () => {
         } catch (e) {
             console.error("Error fetching data:", e);
         }
-        setLoading(false);
+        if (!isPolling) setLoading(false);
     };
 
     useEffect(() => {
         fetchData();
     }, []);
+
+    usePolling(() => {
+        fetchData(true);
+    }, 30000);
+
+    const prevNotificationsList = usePrevious(notificationsList);
+    const initialLoadDone = React.useRef(false);
+
+    useEffect(() => {
+        if (!initialLoadDone.current && notificationsList.length > 0) {
+            initialLoadDone.current = true;
+            return;
+        }
+        
+        if (initialLoadDone.current && prevNotificationsList && notificationsList.length > prevNotificationsList.length) {
+            const newNotifs = notificationsList.filter(n => !prevNotificationsList.find(pn => pn.id === n.id));
+            newNotifs.forEach(n => {
+                addToast(n.message, 'info');
+            });
+        }
+    }, [notificationsList]);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -86,17 +118,19 @@ const DashboardProjectManager = () => {
                     method: 'PUT',
                     body: JSON.stringify(data)
                 });
+                addToast('Project updated successfully', 'success');
             } else {
                 await apiFetch('/projects/', {
                     method: 'POST',
                     body: JSON.stringify(data)
                 });
+                addToast('Project created successfully', 'success');
             }
             setShowProjectModal(false);
             setEditProject(null);
             fetchData();
         } catch (err) {
-            alert('Failed to save project');
+            addToast('Failed to save project', 'error');
         }
     };
 
@@ -104,6 +138,10 @@ const DashboardProjectManager = () => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData);
+        
+        if (data.budget) {
+            data.budget = data.budget.replace(/,/g, '');
+        }
 
         try {
             if (editTask) {
@@ -125,26 +163,48 @@ const DashboardProjectManager = () => {
         }
     };
 
+    const handleDeleteProject = async (id) => {
+        if (window.confirm('Are you sure you want to delete this project?')) {
+            try {
+                await apiFetch(`/projects/${id}/`, { method: 'DELETE' });
+                addToast('Project deleted', 'success');
+                fetchData();
+            } catch (err) {
+                addToast('Failed to delete project', 'error');
+            }
+        }
+    };
+
     const handleDeleteTask = async (id) => {
         if (window.confirm('Are you sure you want to delete this task?')) {
-            await apiFetch(`/tasks/${id}/`, { method: 'DELETE' });
-            fetchData();
+            try {
+                await apiFetch(`/tasks/${id}/`, { method: 'DELETE' });
+                addToast('Task deleted', 'success');
+                fetchData();
+            } catch (err) {
+                addToast('Failed to delete task', 'error');
+            }
         }
     };
 
     // Render Helpers
     const renderOverview = () => (
-        <div className="tab-pane reveal active fade-up">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div>
-                    <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>Overview</h2>
-                    <p style={{ color: 'var(--text-muted)' }}>Welcome back, PM. Here is the high-level summary of all operations.</p>
+        <div className="tab-pane reveal-fade slide-up">
+            <div className="dashboard-header dash-card" style={{ marginBottom: '2.5rem', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--accent)', borderLeft: '4px solid var(--accent)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(255, 140, 0, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ShieldCheck size={36} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div>
+                        <h2 style={{ marginBottom: '0.2rem', color: 'var(--text-main)', fontSize: '1.8rem' }}>Overview</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>Welcome back, PM. Here is the high-level summary of all operations.</p>
+                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button className="btn accent-btn" onClick={() => { setEditProject(null); setShowProjectModal(true); }}>
+                    <button className="btn secondary-btn" onClick={() => { setEditProject(null); setShowProjectModal(true); }}>
                         <Plus size={18} /> Create Project
                     </button>
-                    <button className="btn secondary-btn" onClick={() => { setEditTask(null); setShowTaskModal(true); }}>
+                    <button className="btn accent-btn" onClick={() => { setEditTask(null); setShowTaskModal(true); }}>
                         <UserPlus size={18} /> Assign Task
                     </button>
                 </div>
@@ -211,9 +271,6 @@ const DashboardProjectManager = () => {
                     <div className="value-container" style={{ marginTop: '1rem', display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                         <div className="value" style={{ fontSize: '2.5rem', fontWeight: '800' }}>{overallProgress}%</div>
                     </div>
-                    <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '4px', marginTop: '1rem', overflow: 'hidden' }}>
-                        <div style={{ width: `${overallProgress}%`, background: 'var(--accent-gradient)', height: '100%', borderRadius: '4px' }}></div>
-                    </div>
                 </div>
             </div>
 
@@ -260,9 +317,17 @@ const DashboardProjectManager = () => {
     );
 
     const renderProjects = () => (
-        <div className="tab-pane reveal active fade-up">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)' }}>Project Overview</h2>
+        <div className="tab-pane reveal-fade slide-up">
+            <div className="dashboard-header dash-card" style={{ marginBottom: '2.5rem', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--accent)', borderLeft: '4px solid var(--accent)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(255, 140, 0, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <FolderKanban size={36} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div>
+                        <h2 style={{ marginBottom: '0.2rem', color: 'var(--text-main)', fontSize: '1.8rem' }}>Project Overview</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>Monitor and manage all active projects.</p>
+                    </div>
+                </div>
                 <button className="btn accent-btn" onClick={() => { setEditProject(null); setShowProjectModal(true); }}>
                     <Plus size={18} /> Create New Project
                 </button>
@@ -284,25 +349,34 @@ const DashboardProjectManager = () => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.5rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={16} /> New York HQ</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={16} /> Location: {project.location || 'New York HQ'}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><DollarSign size={16} /> Budget: ₹{Number(project.budget || 0).toLocaleString('en-IN')}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><UserPlus size={16} /> PM: {usersList.find(u => u.id === project.created_by)?.username || 'Unknown'}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} /> Due: {project.deadline || 'Ongoing'}</span>
                             </div>
+
+                            {project.description && (
+                                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                                    <h4 style={{ color: 'var(--text-main)', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <FileText size={16} /> Project Details
+                                    </h4>
+                                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                        {project.description}
+                                    </p>
+                                </div>
+                            )}
 
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                                     <span style={{ color: 'var(--text-muted)' }}>Progress</span>
                                     <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>{progress}%</span>
                                 </div>
-                                <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '4px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${progress}%`, background: 'var(--accent-gradient)', height: '100%', borderRadius: '4px' }}></div>
-                                </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button className="btn outline-btn" style={{ flex: 1, padding: '0.6rem' }}><Eye size={16} /> Details</button>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <button className="btn outline-btn" style={{ flex: 1, padding: '0.6rem' }} onClick={() => navigate(`/client-project/${project.id}`)}><Eye size={16} /> View</button>
                                 <button className="btn outline-btn" style={{ flex: 1, padding: '0.6rem' }} onClick={() => { setEditProject(project); setShowProjectModal(true); }}><Edit2 size={16} /> Edit</button>
+                                <button className="btn outline-btn" style={{ padding: '0.6rem' }} onClick={() => handleDeleteProject(project.id)}><Trash2 size={16} /></button>
                             </div>
                         </div>
                     );
@@ -312,10 +386,18 @@ const DashboardProjectManager = () => {
     );
 
     const renderTasks = () => (
-        <div className="tab-pane reveal active fade-up">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)' }}>Task Management</h2>
-                <button className="btn accent-btn" onClick={() => { setEditTask(null); setShowTaskModal(true); }}>
+        <div className="tab-pane reveal-fade slide-up">
+            <div className="dashboard-header dash-card" style={{ marginBottom: '2.5rem', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--accent)', borderLeft: '4px solid var(--accent)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(255, 140, 0, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ListTodo size={36} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div>
+                        <h2 style={{ marginBottom: '0.2rem', color: 'var(--text-main)', fontSize: '1.8rem' }}>Task Management</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>Assign and monitor workflow progress.</p>
+                    </div>
+                </div>
+                <button className="btn accent-btn" onClick={() => { setEditTask(null); setTaskBudgetInput(''); setShowTaskModal(true); }}>
                     <Plus size={18} /> Create Task
                 </button>
             </div>
@@ -328,6 +410,7 @@ const DashboardProjectManager = () => {
                             <th>Assigned Engineer</th>
                             <th>Project</th>
                             <th>Due Date</th>
+                            <th>Budget</th>
                             <th>Status</th>
                             <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
@@ -339,6 +422,7 @@ const DashboardProjectManager = () => {
                                 <td>{usersList.find(u => u.id === task.assigned_engineer)?.username || 'Unassigned'}</td>
                                 <td>{projectsList.find(p => p.id === task.project)?.title || 'Unknown'}</td>
                                 <td>{task.deadline || 'N/A'}</td>
+                                <td style={{ color: 'var(--accent)', fontWeight: 600 }}>₹{parseFloat(task.budget || 0).toLocaleString('en-IN')}</td>
                                 <td>
                                     <span className={`status-pill ${task.status === 'Completed' ? 'success' : task.status === 'Pending' ? 'muted' : 'active'}`}>
                                         {task.status}
@@ -346,7 +430,12 @@ const DashboardProjectManager = () => {
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                        <button className="btn outline-btn" style={{ padding: '0.4rem 0.8rem' }} onClick={() => { setEditTask(task); setShowTaskModal(true); }}><Edit2 size={14} /></button>
+                                        {task.image && (
+                                            <a href={`http://localhost:8000${task.image}`} target="_blank" rel="noreferrer" className="btn outline-btn" style={{ padding: '0.4rem 0.8rem', color: 'var(--success)' }} title="View Attachment">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                            </a>
+                                        )}
+                                        <button className="btn outline-btn" style={{ padding: '0.4rem 0.8rem' }} onClick={() => { setEditTask(task); setTaskBudgetInput(task.budget ? parseFloat(task.budget).toLocaleString('en-IN') : ''); setShowTaskModal(true); }}><Edit2 size={14} /></button>
                                         <button className="btn outline-btn" style={{ padding: '0.4rem 0.8rem', color: 'var(--error)' }} onClick={() => handleDeleteTask(task.id)}><Trash2 size={14} /></button>
                                     </div>
                                 </td>
@@ -355,100 +444,6 @@ const DashboardProjectManager = () => {
                     </tbody>
                 </table>
             </div>
-        </div>
-    );
-
-    const generateReportPDF = (type) => {
-        alert(`${type} generation feature is coming soon!`);
-    };
-
-    const renderReports = () => (
-        <div className="tab-pane reveal active fade-up">
-            <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', marginBottom: '2rem' }}>Reports Section</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                {['Weekly Project Report', 'Monthly Project Report', 'Weekly Task Report', 'Monthly Task Report'].map(report => (
-                    <div key={report} style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px' }}><FileText size={24} style={{ color: 'var(--accent)' }} /></div>
-                            <h3 style={{ color: 'var(--text-main)', fontSize: '1.1rem' }}>{report}</h3>
-                        </div>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="btn outline-btn" style={{ flex: 1, padding: '0.6rem', opacity: 0.7, cursor: 'not-allowed' }} onClick={() => generateReportPDF(report)}>
-                                <FileText size={16} /> Feature Coming Soon
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <h3 style={{ fontSize: '1.4rem', color: 'var(--text-main)', marginBottom: '1.5rem' }}>Recent Activities</h3>
-            <div style={{ background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-light)', padding: '2rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {[
-                        { icon: <Plus size={16} />, title: 'Project Created', desc: 'Valley Hospital Wing initialized.', time: '2 hours ago' },
-                        { icon: <UserPlus size={16} />, title: 'Task Assigned', desc: 'Assigned "Foundation Pour" to Engineer Sarah.', time: '5 hours ago' },
-                        { icon: <CheckCircle size={16} />, title: 'Task Completed', desc: 'Site Survey finished ahead of schedule.', time: '1 day ago' },
-                        { icon: <FileText size={16} />, title: 'Report Generated', desc: 'Monthly Progress Report downloaded.', time: '2 days ago' }
-                    ].map((activity, i) => (
-                        <div key={i} style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-                            <div style={{ background: 'var(--accent-glow)', color: 'var(--accent)', padding: '0.8rem', borderRadius: '50%' }}>
-                                {activity.icon}
-                            </div>
-                            <div>
-                                <h4 style={{ color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '0.2rem' }}>{activity.title}</h4>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{activity.desc}</p>
-                                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>{activity.time}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderAlerts = () => (
-        <div className="tab-pane reveal active fade-up">
-            <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', marginBottom: '2rem' }}>Alerts & Notifications</h2>
-            
-            {notificationsList.length === 0 ? (
-                <div style={{ background: 'var(--bg-card)', padding: '3rem', borderRadius: '16px', textAlign: 'center', border: '1px dashed var(--border-light)' }}>
-                    <Bell size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
-                    <h3 style={{ color: 'var(--text-main)', fontSize: '1.2rem', marginBottom: '0.5rem' }}>No new alerts</h3>
-                    <p style={{ color: 'var(--text-muted)' }}>You're all caught up!</p>
-                </div>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {notificationsList.map(notif => (
-                        <div key={notif.id} style={{ 
-                            background: 'var(--bg-card)', 
-                            padding: '1.5rem', 
-                            borderRadius: '16px', 
-                            border: `1px solid ${notif.escalation_level > 1 ? 'var(--error)' : 'var(--border-light)'}`,
-                            display: 'flex', 
-                            gap: '1.5rem', 
-                            alignItems: 'center' 
-                        }}>
-                            <div style={{ 
-                                background: notif.escalation_level > 1 ? 'rgba(255, 71, 87, 0.1)' : 'var(--accent-glow)', 
-                                color: notif.escalation_level > 1 ? 'var(--error)' : 'var(--accent)', 
-                                padding: '1rem', 
-                                borderRadius: '50%' 
-                            }}>
-                                <Bell size={24} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <h3 style={{ color: 'var(--text-main)', fontSize: '1.1rem', marginBottom: '0.3rem' }}>
-                                    {notif.type} {notif.escalation_level > 0 && `(Escalation Level ${notif.escalation_level})`}
-                                </h3>
-                                <p style={{ color: 'var(--text-muted)' }}>{notif.message}</p>
-                            </div>
-                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', textAlign: 'right' }}>
-                                {new Date(notif.created_at).toLocaleDateString()}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
     );
 
@@ -462,8 +457,6 @@ const DashboardProjectManager = () => {
             {currentTab === '#overview' && renderOverview()}
             {currentTab === '#projects' && renderProjects()}
             {currentTab === '#tasks' && renderTasks()}
-            {currentTab === '#reports' && renderReports()}
-            {currentTab === '#alerts' && renderAlerts()}
 
             {/* PROJECT MODAL */}
             {showProjectModal && (
@@ -473,7 +466,7 @@ const DashboardProjectManager = () => {
                         <form onSubmit={handleProjectSubmit}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                                 <input name="title" defaultValue={editProject?.title} placeholder="Project Name" required style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
-                                <input name="location" placeholder="Location" defaultValue="New York HQ" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
+                                <input name="location" placeholder="Location" defaultValue={editProject?.location} style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
                                 <input name="budget" type="number" step="0.01" defaultValue={editProject?.budget} placeholder="Budget (₹)" required style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
                                 <div style={{ display: 'flex', gap: '1rem' }}>
                                     <input name="start_date" type="date" placeholder="Start Date" style={{ flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)', colorScheme: 'dark' }} />
@@ -485,13 +478,30 @@ const DashboardProjectManager = () => {
                                     <option value="Completed">Completed</option>
                                     <option value="Delayed">Delayed</option>
                                 </select>
-                                <textarea name="description" defaultValue={editProject?.description} placeholder="Description" rows="3" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}></textarea>
+                                <textarea name="description" defaultValue={editProject?.description} placeholder="Description (Details)" rows="3" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}></textarea>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                 <button type="button" className="btn secondary-btn" onClick={() => setShowProjectModal(false)}>Cancel</button>
                                 <button type="submit" className="btn accent-btn">Save Project</button>
                             </div>
                         </form>
+
+                        {editProject && (
+                            <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border-light)' }}>
+                                <h3 style={{ fontSize: '1.4rem', color: 'var(--text-main)', marginBottom: '1.5rem' }}>Workspace & Chats</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <FileGallery projectId={editProject.id} user={user} />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
+                                        <CommentsPanel projectId={editProject.id} />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gridColumn: '1 / -1' }}>
+                                        <ChangeRequestsPanel projectId={editProject.id} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -512,16 +522,17 @@ const DashboardProjectManager = () => {
 
                                 <select name="assigned_engineer" defaultValue={editTask?.assigned_engineer} required style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
                                     <option value="">Assign Engineer...</option>
-                                    {usersList.filter(u => u.role === 'engineer' || u.role === 'contractor').map(u => <option key={u.id} value={u.id}>{u.username} ({u.role})</option>)}
+                                    {usersList.filter(u => u.role === 'engineer').map(u => <option key={u.id} value={u.id}>{u.username} ({u.role})</option>)}
                                 </select>
 
                                 <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <select name="priority" defaultValue="Medium" style={{ flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+                                    <select name="priority" defaultValue={editTask?.priority || "Medium"} style={{ flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
                                         <option value="Low">Low Priority</option>
                                         <option value="Medium">Medium Priority</option>
                                         <option value="High">High Priority</option>
                                     </select>
                                     <input name="deadline" type="date" defaultValue={editTask?.deadline} style={{ flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)', colorScheme: 'dark' }} />
+                                    <input name="budget" type="text" value={taskBudgetInput} onChange={(e) => { const raw = e.target.value.replace(/[^0-9.]/g, ''); setTaskBudgetInput(raw ? Number(raw.replace(/,/g,'')).toLocaleString('en-IN') : ''); }} placeholder="Allocated Budget (₹)" style={{ flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }} />
                                 </div>
 
                                 <select name="status" defaultValue={editTask?.status || "Pending"} required style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
@@ -531,6 +542,25 @@ const DashboardProjectManager = () => {
                                 </select>
 
                                 <textarea name="description" defaultValue={editTask?.description} placeholder="Description" rows="3" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-main)' }}></textarea>
+                                
+                                {editTask?.invoice_id && (
+                                    <button 
+                                        type="button" 
+                                        className="btn outline-btn" 
+                                        style={{ marginTop: '1rem', width: '100%', padding: '0.8rem', textAlign: 'center' }}
+                                        onClick={async () => {
+                                            try {
+                                                const blob = await apiFetchBlob(`/invoices/${editTask.invoice_id}/pdf/`);
+                                                const url = URL.createObjectURL(blob);
+                                                window.open(url, '_blank');
+                                            } catch (err) {
+                                                addToast('Failed to load invoice', 'error');
+                                            }
+                                        }}
+                                    >
+                                        View Invoice (PDF)
+                                    </button>
+                                )}
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                 <button type="button" className="btn secondary-btn" onClick={() => setShowTaskModal(false)}>Cancel</button>

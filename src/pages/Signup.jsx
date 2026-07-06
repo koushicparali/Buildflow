@@ -31,7 +31,7 @@ const Signup = () => {
             if (success) {
                 if (formData.role === 'pm') navigate('/dashboard-pm');
                 else if (formData.role === 'engineer') navigate('/dashboard-engineer');
-                else if (formData.role === 'contractor') navigate('/dashboard-contractor');
+                else if (formData.role === 'client') navigate('/dashboard-client');
             } else {
                 setError("Registration succeeded but login failed.");
             }
@@ -59,7 +59,7 @@ const Signup = () => {
                         <select id="role" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-main)', color: 'var(--text-main)' }} value={formData.role} onChange={handleChange}>
                             <option value="pm">Project Manager</option>
                             <option value="engineer">Engineer</option>
-                            <option value="contractor">Contractor</option>
+                            <option value="client">Client</option>
                         </select>
                     </div>
                     <div className="form-group">

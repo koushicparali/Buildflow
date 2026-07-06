@@ -14,10 +14,10 @@ class Command(BaseCommand):
             days_late = (today - task.deadline).days
             
             if days_late == 0:
-                # Due today - Notify Contractor
-                if task.assigned_contractor:
+                # Due today - Notify Engineer
+                if task.assigned_engineer:
                     Notification.objects.get_or_create(
-                        user=task.assigned_contractor,
+                        user=task.assigned_engineer,
                         related_task=task,
                         type='Deadline',
                         escalation_level=0,

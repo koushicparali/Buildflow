@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Project, Task, ContactQuery, Report
+from .models import User, Project, Task, ContactQuery, Report, Notification, Milestone, ProjectFile, Inspection, NotificationPreference, ChangeRequest, ProjectRequest, Comment
 
 class CustomUserAdmin(UserAdmin):
     list_display = ('username', 'email', 'role', 'is_staff')
@@ -18,8 +18,8 @@ class ProjectAdmin(admin.ModelAdmin):
     search_fields = ('title', 'description', 'location')
 
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ('title', 'project', 'assigned_engineer', 'assigned_contractor', 'status', 'progress', 'priority')
-    list_filter = ('status', 'project', 'assigned_engineer', 'assigned_contractor', 'priority')
+    list_display = ('title', 'project', 'assigned_engineer', 'status', 'progress', 'priority')
+    list_filter = ('status', 'project', 'assigned_engineer', 'priority')
     search_fields = ('title', 'description')
 
 class ReportAdmin(admin.ModelAdmin):
@@ -36,3 +36,11 @@ admin.site.register(Project, ProjectAdmin)
 admin.site.register(Task, TaskAdmin)
 admin.site.register(Report, ReportAdmin)
 admin.site.register(ContactQuery, ContactQueryAdmin)
+admin.site.register(Notification)
+admin.site.register(Milestone)
+admin.site.register(ProjectFile)
+admin.site.register(Inspection)
+admin.site.register(NotificationPreference)
+admin.site.register(ChangeRequest)
+admin.site.register(ProjectRequest)
+admin.site.register(Comment)
